@@ -18,6 +18,7 @@ import { CleanService } from './clean/service'
 import { applyRuleOwnership, formatOwnershipStats } from './ownership/apply'
 import { collectAndSaveRegistry } from './registry/service'
 import { ScanService } from './scan/service'
+import { initLogger, logError, logInfo } from './logging'
 import { electronSecretStore } from './settings/electron-secret-store'
 import { SettingsService } from './settings/service'
 
@@ -31,7 +32,8 @@ function createWindow(): void {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: true,
+      devTools: !app.isPackaged
     }
   })
 
@@ -40,6 +42,14 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url !== mainWindow.webContents.getURL()) {
+      event.preventDefault()
+    }
+  })
+  mainWindow.webContents.on('will-attach-webview', (event) => {
+    event.preventDefault()
+  })
 
   const rendererUrl = process.env['ELECTRON_RENDERER_URL']
   if (rendererUrl) {
@@ -56,6 +66,8 @@ async function bootstrap(): Promise<void> {
   }
 
   await app.whenReady()
+  initLogger(path.join(app.getPath('userData'), 'logs'))
+  logInfo('应用启动')
 
   initDatabase()
   const settingsService = new SettingsService(app.getPath('userData'), electronSecretStore)
@@ -108,7 +120,11 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  logInfo('应用退出')
   closeDatabase()
 })
 
-void bootstrap()
+void bootstrap().catch((error: unknown) => {
+  logError('应用启动失败', error)
+  app.quit()
+})

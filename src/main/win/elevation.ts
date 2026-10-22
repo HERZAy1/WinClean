@@ -12,6 +12,10 @@ export function isElevated(): Promise<boolean> {
     return Promise.resolve(true)
   }
 
+  if (!app.isPackaged && process.argv.includes('--no-elevate')) {
+    return Promise.resolve(false)
+  }
+
   if (!elevationPromise) {
     elevationPromise = runPs('net session *> $null; exit $LASTEXITCODE', {
       timeoutMs: 10_000

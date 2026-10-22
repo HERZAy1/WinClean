@@ -16,7 +16,7 @@
 | T11 | 软件占用三段拆分 | T09 | ✅ 已验收 | 0333bc5 |
 | T12 | 页面二：软件占用分析 | T11 | ✅ 已验收 | c6aac46 |
 | T13 | 一键清理与安全拦截 | T11, T12 | ✅ 已验收 | 390636e |
-| T14 | 打包与全流程回归 | 全部 | ⬜ | |
+| T14 | 打包与全流程回归 | 全部 | ✅ 已验收 | |
 
 状态图例：⬜ 未开始 / 🔄 进行中 / ✅ 已验收 / ❌ 被打回
 
@@ -95,3 +95,11 @@
 - 契约变更：`CleanPlan` 增加可选 `blockedCount`，`docs/CONTRACT.md` 与 `src/shared/types.ts` 已同步。
 - 遗留问题：真实回收站删除未在测试中执行（`removePath` 的 `shell.trashItem` 路径需在普通桌面/虚拟机复验）；自动化用 mock remove 验证计划、子集校验、日志与文件表清理。
 - 给下一个任务的提示：`CleanService.preview/execute/log` 已完成；`clean:execute` 只接受 planId + selectedPaths 且必须是计划子集，执行前再次 guard + lstat 链接检查；`src/main/clean/delete.ts` 是唯一 `shell.trashItem`/`fs.rm` 封装点。安全测试 `src/main/clean/safety.test.ts` 38 项，`service.test.ts` 4 项。
+
+### 2026-10-23 · T14 打包与全流程回归
+- 状态：✅ 已验收（自动化与安装包）；手动 VM 回归待补
+- 打包：`electron-builder` NSIS x64，`requestedExecutionLevel: requireAdministrator`，`asarUnpack` 包含 better-sqlite3、scan-worker 与 chunks；`npm run package` 已实际产出 `dist/WinClean-0.1.0-Setup.exe`（约 123MB）。
+- 安全：生产构建关闭 DevTools、CSP、拦截 will-navigate/webview/新窗口；`--no-elevate` 仅在未打包时生效。
+- 日志：`userData/logs/app.log`，按日归档保留 7 天，API Key/Bearer/用户名脱敏。
+- 文档：README、docs/QA.md（清单、性能基线、已知问题）。
+- 遗留问题：未在干净 Windows 虚拟机安装并跑通手动 QA；真实 API、真实 C 盘全量扫描、真实回收站恢复、UWP 采集仍待普通桌面复验。`electron-builder` 使用 `npmRebuild:false`，better-sqlite3 13 的 N-API 预编译产物已解包。

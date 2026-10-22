@@ -1,0 +1,42 @@
+appId: com.winclean.desktop
+productName: WinClean
+executableName: WinClean
+copyright: Copyright © 2026 WinClean
+artifactName: WinClean-${version}-Setup.${ext}
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+
+asarUnpack:
+  - node_modules/better-sqlite3/**
+  - out/main/scan-worker.js
+  - out/main/chunks/**
+
+npmRebuild: false
+compression: normal
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  requestedExecutionLevel: requireAdministrator
+
+nsis:
+  oneClick: false
+  perMachine: true
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: WinClean
+  deleteAppDataOnUninstall: false
+
+publish: null

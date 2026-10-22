@@ -1,3 +1,4 @@
+import { app } from 'electron'
 import path from 'node:path'
 import { Worker } from 'node:worker_threads'
 import type { ProgressEvent } from '../../shared/types'
@@ -49,7 +50,9 @@ export class ScanService {
     this.lastProgress = null
     this.finalized = false
 
-    const workerPath = path.join(__dirname, 'scan-worker.js')
+    const workerPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'app.asar.unpacked', 'out', 'main', 'scan-worker.js')
+      : path.join(__dirname, 'scan-worker.js')
     const worker = new Worker(workerPath, {
       workerData: {
         roots: drives.map((drive) => `${drive.toUpperCase()}:\\`),

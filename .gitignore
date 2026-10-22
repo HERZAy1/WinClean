@@ -7,6 +7,8 @@ files/
 .pnpm-store/
 .npm-cache/
 .electron-cache/
+.electron-builder-cache/
 .dev-user-data/
 *.log
 .DS_Store
+.tmp/
