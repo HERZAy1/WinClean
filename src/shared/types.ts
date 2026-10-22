@@ -185,9 +185,9 @@ export interface LlmThinkingEvent {
 }
 
 export interface AppTreeRoot {
-  nodeId: string // 'app:<appId>' | 'virtual:system' | 'virtual:unowned'
+  nodeId: string // 'app:<appId>' | 'virtual:system' | 'virtual:user' | 'virtual:unowned'
   label: string
-  kind: 'app' | 'system' | 'unowned'
+  kind: 'app' | 'system' | 'user' | 'unowned'
   totalBytes: number
   childCount: number
 }

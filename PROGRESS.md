@@ -8,7 +8,7 @@
 | T03 | LLM 适配层与连接测试 | T02 | ✅ 已验收 | d76eaa3 |
 | T04 | 管理员提权与磁盘枚举 | T00 | ✅ 已验收 | 7467ddc |
 | T05 | 文件扫描器与进度 | T04 | ✅ 已验收 | b2883a5 |
-| T06 | 系统/用户文件分类 | T05 | ⬜ | |
+| T06 | 系统/用户文件分类 | T05 | ✅ 已验收 | |
 | T07 | 注册表与已安装软件采集 | T04 | ⬜ | |
 | T08 | 规则式归属引擎 | T06, T07 | ⬜ | |
 | T09 | LLM 归属补全与未归属分析 | T03, T08 | ⬜ | |
@@ -51,3 +51,9 @@
 - 状态：✅ 已验收
 - 遗留问题：未完成真实 C 盘全量扫描（本机 C 盘已用约 131GB，手动冒烟在 49 个文件后取消）；峰值内存未记录。全量扫描建议在 T14 QA 阶段用虚拟机执行。
 - 给下一个任务的提示：扫描核心在 `src/main/scan/scanner.ts`，worker 为 `src/main/scan/worker.ts`，主线程写库/进度在 `src/main/scan/service.ts`。用 subst X: 临时盘完整跑通：3 个文件、4 个目录、root=15B、sub=12B、deep=7B、empty=0；取消后 worker 2 秒内退出。`ScanService.setOnComplete` 已预留，T06 可接分类阶段。
+
+### 2026-10-23 · T06 系统/用户文件分类
+- 状态：✅ 已验收
+- 契约变更：`AppTreeRoot.kind` 增加 `'user'`，并新增 `virtual:user` 根节点；`docs/CONTRACT.md` 与 `src/shared/types.ts` 已同步。
+- 遗留问题：当前分类规则按当前用户名生成，其他用户目录归入系统容器；1M 行分类基准 3.467s（内存库，插入 1.434s 不计入）。
+- 给下一个任务的提示：规则入口 `src/main/classify/rules.ts`，SQL 更新 `src/main/classify/apply.ts`，分类在扫描完成后由 `ScanService` 回调执行。`tree:getRoots` 已返回系统/用户/未归属三个虚拟根；`tree:getChildren` 仍待 T10。subst X: 分类验证：system 11B、user 9B、unowned 16B，`WindowsApps` 未被 `Windows` 前缀误匹配。

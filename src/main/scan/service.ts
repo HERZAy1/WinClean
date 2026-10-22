@@ -21,10 +21,11 @@ export class ScanService {
   private filesScanned = 0
   private errorCount = 0
   private lastProgress: ProgressEvent | null = null
+  private activeDrives: string[] = []
   private finalized = true
-  private onComplete: ((scanId: number) => void) | null = null
+  private onComplete: ((scanId: number, drives: string[]) => void | Promise<void>) | null = null
 
-  setOnComplete(callback: (scanId: number) => void): void {
+  setOnComplete(callback: (scanId: number, drives: string[]) => void | Promise<void>): void {
     this.onComplete = callback
   }
 
@@ -41,6 +42,7 @@ export class ScanService {
     const scanId = Number(result.lastInsertRowid)
 
     this.activeScanId = scanId
+    this.activeDrives = [...drives]
     this.totalUsedBytes = totalUsedBytes
     this.filesScanned = 0
     this.errorCount = 0
@@ -131,7 +133,7 @@ export class ScanService {
     }
 
     if (message.type === 'done') {
-      this.finish(scanId, message.summary)
+      void this.finish(scanId, message.summary)
       return
     }
 
@@ -180,7 +182,7 @@ export class ScanService {
     this.sendErrorCount()
   }
 
-  private finish(scanId: number, summary: ScanSummary): void {
+  private async finish(scanId: number, summary: ScanSummary): Promise<void> {
     if (this.finalized) {
       return
     }
@@ -193,6 +195,29 @@ export class ScanService {
       .run(Date.now(), scanId)
 
     this.sendProgress({
+      stage: 'classifying',
+      scannedBytes: summary.bytes,
+      totalUsedBytes: this.totalUsedBytes,
+      percent: 1,
+      filesScanned: summary.files,
+      message: `扫描完成，正在分类 ${summary.files} 个文件`
+    })
+
+    try {
+      await this.onComplete?.(scanId, this.activeDrives)
+    } catch (error) {
+      this.sendProgress({
+        stage: 'error',
+        scannedBytes: summary.bytes,
+        totalUsedBytes: this.totalUsedBytes,
+        percent: 1,
+        filesScanned: summary.files,
+        message: `分类失败：${error instanceof Error ? error.message : String(error)}`
+      })
+      return
+    }
+
+    this.sendProgress({
       stage: 'done',
       scannedBytes: summary.bytes,
       totalUsedBytes: this.totalUsedBytes,
@@ -201,7 +226,6 @@ export class ScanService {
       message: `扫描完成：${summary.files} 个文件`
     })
     this.sendErrorCount()
-    this.onComplete?.(scanId)
   }
 
   private fail(scanId: number, message: string): void {

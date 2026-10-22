@@ -1,13 +1,15 @@
 import path from 'node:path'
 
 export function normalizePath(input: string): string {
-  let normalized = path.resolve(input).replace(/^\\\\\?\\/, '')
+  const windowsPath = /^[a-zA-Z]:/.test(input) || input.startsWith('\\\\')
+  const resolved = windowsPath ? path.win32.resolve(input) : path.resolve(input)
+  let normalized = resolved.replace(/^\\\\\?\\/, '')
 
   if (/^[a-zA-Z]:/.test(normalized)) {
     normalized = normalized[0].toUpperCase() + normalized.slice(1)
   }
 
-  if (normalized.length > 3 && normalized.endsWith(path.sep)) {
+  if (normalized.length > 3 && /[\\/]$/.test(normalized)) {
     normalized = normalized.slice(0, -1)
   }
 

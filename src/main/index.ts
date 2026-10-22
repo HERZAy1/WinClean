@@ -6,6 +6,9 @@ import { registerFallbackHandlers } from './ipc/registry'
 import { registerScanIpc } from './ipc/scan'
 import { registerSettingsIpc } from './ipc/settings'
 import { registerSystemIpc } from './ipc/system'
+import { registerTreeIpc } from './ipc/tree'
+import { applyClassification } from './classify/apply'
+import { buildRules } from './classify/rules'
 import { ScanService } from './scan/service'
 import { electronSecretStore } from './settings/electron-secret-store'
 import { SettingsService } from './settings/service'
@@ -49,10 +52,14 @@ async function bootstrap(): Promise<void> {
   initDatabase()
   const settingsService = new SettingsService(app.getPath('userData'), electronSecretStore)
   const scanService = new ScanService()
+  scanService.setOnComplete((scanId, drives) => {
+    applyClassification(scanId, buildRules(drives))
+  })
   registerSettingsIpc(settingsService)
   registerLlmIpc(settingsService)
   registerSystemIpc()
   registerScanIpc(scanService)
+  registerTreeIpc()
   registerFallbackHandlers()
   createWindow()
 
