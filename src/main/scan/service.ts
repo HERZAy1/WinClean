@@ -110,6 +110,19 @@ export class ScanService {
     return this.activeScanId
   }
 
+  reportStage(stage: ProgressEvent['stage'], message: string, percent = 1): void {
+    const last = this.lastProgress
+    this.sendProgress({
+      stage,
+      scannedBytes: last?.scannedBytes ?? 0,
+      totalUsedBytes: this.totalUsedBytes,
+      percent,
+      currentPath: last?.currentPath,
+      filesScanned: last?.filesScanned ?? this.filesScanned,
+      message
+    })
+  }
+
   private handleMessage(scanId: number, message: WorkerMessage): void {
     if (this.activeScanId !== scanId) {
       return
@@ -193,15 +206,6 @@ export class ScanService {
     getDatabase()
       .prepare('UPDATE scans SET finishedAt = ? WHERE id = ?')
       .run(Date.now(), scanId)
-
-    this.sendProgress({
-      stage: 'classifying',
-      scannedBytes: summary.bytes,
-      totalUsedBytes: this.totalUsedBytes,
-      percent: 1,
-      filesScanned: summary.files,
-      message: `扫描完成，正在分类 ${summary.files} 个文件`
-    })
 
     try {
       await this.onComplete?.(scanId, this.activeDrives)

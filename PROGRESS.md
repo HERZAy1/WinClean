@@ -9,7 +9,7 @@
 | T04 | 管理员提权与磁盘枚举 | T00 | ✅ 已验收 | 7467ddc |
 | T05 | 文件扫描器与进度 | T04 | ✅ 已验收 | b2883a5 |
 | T06 | 系统/用户文件分类 | T05 | ✅ 已验收 | d305c64 |
-| T07 | 注册表与已安装软件采集 | T04 | ⬜ | |
+| T07 | 注册表与已安装软件采集 | T04 | ✅ 已验收 | |
 | T08 | 规则式归属引擎 | T06, T07 | ⬜ | |
 | T09 | LLM 归属补全与未归属分析 | T03, T08 | ⬜ | |
 | T10 | 页面一：文件关系树 + 未归属面板 | T09 | ⬜ | |
@@ -57,3 +57,8 @@
 - 契约变更：`AppTreeRoot.kind` 增加 `'user'`，并新增 `virtual:user` 根节点；`docs/CONTRACT.md` 与 `src/shared/types.ts` 已同步。
 - 遗留问题：当前分类规则按当前用户名生成，其他用户目录归入系统容器；1M 行分类基准 3.467s（内存库，插入 1.434s 不计入）。
 - 给下一个任务的提示：规则入口 `src/main/classify/rules.ts`，SQL 更新 `src/main/classify/apply.ts`，分类在扫描完成后由 `ScanService` 回调执行。`tree:getRoots` 已返回系统/用户/未归属三个虚拟根；`tree:getChildren` 仍待 T10。subst X: 分类验证：system 11B、user 9B、unowned 16B，`WindowsApps` 未被 `Windows` 前缀误匹配。
+
+### 2026-10-23 · T07 注册表与已安装软件采集
+- 状态：✅ 已验收
+- 遗留问题：本 DSH 的 Electron 子进程执行 `Get-AppxPackage` 返回 0 条，而同一命令在普通 PowerShell/Node 测试进程返回 164 条；已实现 `-AllUsers` 失败后回退当前用户，普通桌面仍需复验 UWP。真实采集到 100 个 registry 应用、102 条注册表项。
+- 给下一个任务的提示：解析入口 `src/main/registry/parse.ts`，采集脚本 `src/main/registry/collect.ts`，落库 `src/main/registry/service.ts`。`apps` 表新增 `hidden/exePaths/publisherKeys/servicePaths`，`registry_entries` 按 scanId 写入。T08 可直接使用 apps 的 installLocation/exePaths/publisherKeys。无任何注册表写操作，grep 无命中。

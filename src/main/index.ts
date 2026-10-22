@@ -9,6 +9,7 @@ import { registerSystemIpc } from './ipc/system'
 import { registerTreeIpc } from './ipc/tree'
 import { applyClassification } from './classify/apply'
 import { buildRules } from './classify/rules'
+import { collectAndSaveRegistry } from './registry/service'
 import { ScanService } from './scan/service'
 import { electronSecretStore } from './settings/electron-secret-store'
 import { SettingsService } from './settings/service'
@@ -52,7 +53,18 @@ async function bootstrap(): Promise<void> {
   initDatabase()
   const settingsService = new SettingsService(app.getPath('userData'), electronSecretStore)
   const scanService = new ScanService()
-  scanService.setOnComplete((scanId, drives) => {
+  scanService.setOnComplete(async (scanId, drives) => {
+    scanService.reportStage('collecting-registry', '正在采集已安装软件…')
+    try {
+      await collectAndSaveRegistry(scanId)
+    } catch (error) {
+      scanService.reportStage(
+        'collecting-registry',
+        `软件采集失败，继续分类：${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+
+    scanService.reportStage('classifying', '正在分类系统与用户文件…')
     applyClassification(scanId, buildRules(drives))
   })
   registerSettingsIpc(settingsService)

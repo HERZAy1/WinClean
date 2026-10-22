@@ -48,7 +48,11 @@ const SCHEMA_SQL = `
     installLocation TEXT,
     uninstallString TEXT,
     source TEXT NOT NULL CHECK (source IN ('registry', 'uwp', 'portable-guess')),
-    registryKeys TEXT NOT NULL DEFAULT '[]'
+    registryKeys TEXT NOT NULL DEFAULT '[]',
+    hidden INTEGER NOT NULL DEFAULT 0,
+    exePaths TEXT NOT NULL DEFAULT '[]',
+    publisherKeys TEXT NOT NULL DEFAULT '[]',
+    servicePaths TEXT NOT NULL DEFAULT '[]'
   );
 
   CREATE TABLE IF NOT EXISTS ownerships (
@@ -131,9 +135,25 @@ export function initDatabase(): Database.Database {
   database.pragma('foreign_keys = ON')
   database.pragma('busy_timeout = 5000')
   database.exec(SCHEMA_SQL)
+  ensureColumn(database, 'apps', 'hidden', 'INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(database, 'apps', 'exePaths', "TEXT NOT NULL DEFAULT '[]'")
+  ensureColumn(database, 'apps', 'publisherKeys', "TEXT NOT NULL DEFAULT '[]'")
+  ensureColumn(database, 'apps', 'servicePaths', "TEXT NOT NULL DEFAULT '[]'")
 
   connection = database
   return connection
+}
+
+function ensureColumn(
+  database: Database.Database,
+  table: string,
+  column: string,
+  definition: string
+): void {
+  const columns = database.pragma(`table_info(${table})`) as { name: string }[]
+  if (!columns.some((item) => item.name === column)) {
+    database.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+  }
 }
 
 export function getDatabase(): Database.Database {
