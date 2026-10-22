@@ -16,6 +16,7 @@
     "better-sqlite3": "^13.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^7.18.4",
     "zustand": "^5.0.16"
   },
   "devDependencies": {
@@ -29,6 +30,7 @@
     "electron-vite": "^6.0.0",
     "eslint": "^10.13.0",
     "globals": "^17.13.0",
+    "happy-dom": "^21.0.4",
     "prettier": "^3.9.10",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.72.0",

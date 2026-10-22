@@ -3,7 +3,7 @@
 | 任务 | 标题 | 前置 | 状态 | 提交 |
 |---|---|---|---|---|
 | T00 | 工程初始化与契约落地 | - | ✅ 已验收 | f46fc1c |
-| T01 | 主题系统与布局壳 | T00 | ⬜ | |
+| T01 | 主题系统与布局壳 | T00 | ✅ 已验收 | |
 | T02 | 设置页与 API Key 加密存储 | T01 | ⬜ | |
 | T03 | LLM 适配层与连接测试 | T02 | ⬜ | |
 | T04 | 管理员提权与磁盘枚举 | T00 | ⬜ | |
@@ -26,3 +26,8 @@
 - 状态：✅ 已验收
 - 遗留问题：无
 - 给下一个任务的提示：可直接使用 `src/shared/types.ts`、`src/shared/channels.ts` 和 `window.api`；主进程 IPC 目前统一返回 `INTERNAL / 未实现`，实现业务时替换对应 handler。`better-sqlite3` 13 使用 N-API 预编译产物，无需针对 Electron ABI 重新编译。开发时若遇到 Chromium sandbox 启动失败，可临时使用 `npm run dev -- --noSandbox`，正常桌面环境不要关闭 sandbox。
+
+### 2026-10-23 · T01 主题系统与布局壳
+- 状态：✅ 已验收
+- 遗留问题：开发模式仍有 Electron CSP 提示；主题目前同时写 localStorage 并尝试 `settings:save`，T02 接通设置持久化后应移除 localStorage 回退。
+- 给下一个任务的提示：主题状态使用 `useThemeStore`，设计变量集中在 `src/renderer/styles/tokens.css`；布局壳、三页路由和 `/dev/ui` 组件预览已就绪。新增依赖 `react-router-dom`（路由要求）与 `happy-dom`（useTheme DOM 单测）。

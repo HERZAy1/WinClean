@@ -1,0 +1,72 @@
+:root {
+  color-scheme: light;
+
+  --color-bg: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef0f6;
+  --color-surface-strong: #e5e8f1;
+  --color-border: #dfe3ec;
+  --color-border-strong: #c9cfdd;
+  --color-text: #171a26;
+  --color-text-secondary: #555d72;
+  --color-text-tertiary: #858da2;
+  --color-accent: #4f46e5;
+  --color-accent-strong: #4338ca;
+  --color-accent-soft: #eceafe;
+  --color-accent-muted: #c7c2fb;
+  --color-on-accent: #ffffff;
+  --color-switch-thumb: #ffffff;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-success: #15803d;
+  --color-success-soft: #ecfdf3;
+  --color-warning: #b45309;
+  --color-warning-soft: #fffbeb;
+
+  --shadow-sm: 0 1px 2px rgba(23, 26, 38, 0.05);
+  --shadow-md: 0 10px 30px rgba(23, 26, 38, 0.08);
+  --shadow-focus: 0 0 0 3px var(--color-accent-soft);
+
+  --font-sans: 'Segoe UI Variable', 'Microsoft YaHei UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+
+  --radius: 10px;
+  --radius-pill: 999px;
+
+  --duration-fast: 150ms;
+  --duration-base: 180ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+
+  --sidebar-width: 228px;
+  --topbar-height: 76px;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-bg: #0f1117;
+  --color-surface: #151823;
+  --color-surface-muted: #1c2030;
+  --color-surface-strong: #252a3b;
+  --color-border: #2a2f41;
+  --color-border-strong: #3a4157;
+  --color-text: #f1f3f9;
+  --color-text-secondary: #aab1c4;
+  --color-text-tertiary: #747d95;
+  --color-accent: #818cf8;
+  --color-accent-strong: #a5b4fc;
+  --color-accent-soft: #24244a;
+  --color-accent-muted: #4c4a91;
+  --color-on-accent: #10121c;
+  --color-switch-thumb: #f1f3f9;
+  --color-danger: #f87171;
+  --color-danger-soft: #3a1e24;
+  --color-success: #4ade80;
+  --color-success-soft: #142b21;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #332813;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.32);
+  --shadow-focus: 0 0 0 3px var(--color-accent-soft);
+}
