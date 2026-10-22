@@ -97,6 +97,7 @@ export interface CleanItem {
 export interface SizeBreakdown {
   appId: string;
   appName: string;
+  publisher?: string;
   totalBytes: number;
   bodyBytes: number;
   essentialCacheBytes: number;

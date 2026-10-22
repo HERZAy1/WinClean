@@ -110,8 +110,8 @@ function itemsFor(scanId: number, appId: string, db = getDatabase()): CleanItem[
 }
 
 export function getBreakdown(scanId: number, appId: string, db = getDatabase()): SizeBreakdown | null {
-  const app = db.prepare('SELECT id, name FROM apps WHERE id = ?').get(appId) as
-    | { id: string; name: string }
+  const app = db.prepare('SELECT id, name, publisher FROM apps WHERE id = ?').get(appId) as
+    | { id: string; name: string; publisher: string | null }
     | undefined
   if (!app) {
     return null
@@ -131,6 +131,7 @@ export function getBreakdown(scanId: number, appId: string, db = getDatabase()):
   return {
     appId: app.id,
     appName: app.name,
+    publisher: app.publisher ?? undefined,
     ...totals,
     items
   }
@@ -141,6 +142,7 @@ export function listBreakdowns(scanId: number, db = getDatabase()): SizeBreakdow
     .prepare(
       `SELECT s.appId,
               a.name AS appName,
+              a.publisher AS publisher,
               COALESCE(SUM(s.sizeBytes), 0) AS totalBytes,
               COALESCE(SUM(CASE WHEN s.category = 'body' THEN s.sizeBytes ELSE 0 END), 0) AS bodyBytes,
               COALESCE(SUM(CASE WHEN s.category = 'essentialCache' THEN s.sizeBytes ELSE 0 END), 0) AS essentialCacheBytes,
@@ -154,6 +156,7 @@ export function listBreakdowns(scanId: number, db = getDatabase()): SizeBreakdow
     .all(scanId) as {
     appId: string
     appName: string
+    publisher: string | null
     totalBytes: number
     bodyBytes: number
     essentialCacheBytes: number
@@ -162,6 +165,7 @@ export function listBreakdowns(scanId: number, db = getDatabase()): SizeBreakdow
 
   return rows.map((row) => ({
     ...row,
+    publisher: row.publisher ?? undefined,
     items: []
   }))
 }

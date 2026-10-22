@@ -7,6 +7,7 @@ import '../styles/base.css'
 import './components/ui/ui.css'
 import '../styles/shell.css'
 import '../styles/files.css'
+import '../styles/apps.css'
 import { initializeTheme } from './stores/useTheme'
 import { zhCN } from './i18n/zh-CN'
 

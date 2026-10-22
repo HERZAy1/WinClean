@@ -14,7 +14,7 @@
 | T09 | LLM 归属补全与未归属分析 | T03, T08 | ✅ 已验收 | 48d199e |
 | T10 | 页面一：文件关系树 + 未归属面板 | T09 | ✅ 已验收 | 255f065 |
 | T11 | 软件占用三段拆分 | T09 | ✅ 已验收 | 0333bc5 |
-| T12 | 页面二：软件占用分析 | T11 | ⬜ | |
+| T12 | 页面二：软件占用分析 | T11 | ✅ 已验收 | |
 | T13 | 一键清理与安全拦截 | T11, T12 | ⬜ | |
 | T14 | 打包与全流程回归 | 全部 | ⬜ | |
 
@@ -83,3 +83,9 @@
 - 状态：✅ 已验收
 - 遗留问题：LLM 复核 >50MB 未命中目录尚未接入实际调用，当前为规则分类 + `isPathCleanable` 本地降级；T12/T13 使用规则结果。
 - 给下一个任务的提示：规则入口 `src/main/breakdown/rules.ts`（40 条 disposable + 18 条 sensitive），汇总/落库 `src/main/breakdown/service.ts`，安全校验 `src/main/safety/guard.ts`。流水线阶段 `breakdown` 已接入，`size_items` 按文件写入，`apps:list/getBreakdown` 已实现；恒等式 body+essential+disposable=total。测试：63 个分类用例、44 个 guard 用例。
+
+### 2026-10-23 · T12 软件占用分析页面
+- 状态：✅ 已验收
+- 契约变更：`SizeBreakdown` 增加可选 `publisher`，`docs/CONTRACT.md` 与 `src/shared/types.ts` 已同步。
+- 遗留问题：预览对话框已对接 `clean:preview`，但执行按钮保持 disabled，等待 T13 完成计划与执行；真实运行态预览需 T13 后端。
+- 给下一个任务的提示：页面二入口 `src/renderer/src/pages/AppsPage.tsx`，三段条 `StackedBar.tsx`；汇总卡/搜索/排序/>100MB 过滤/展开明细/预览对话框均已实现。组件测试覆盖排序、搜索过滤、展开、预览对话框。
