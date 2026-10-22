@@ -62,7 +62,17 @@ beforeEach(() => {
         getBreakdown: vi.fn().mockResolvedValue({ ok: true, data: detail })
       },
       clean: {
-        preview: vi.fn().mockResolvedValue({ ok: true, data: plan })
+        preview: vi.fn().mockResolvedValue({ ok: true, data: plan }),
+        execute: vi.fn().mockResolvedValue({
+          ok: true,
+          data: {
+            planId: 'plan-1',
+            freedBytes: 200 * MB,
+            succeeded: ['C:\\Users\\Alice\\AppData\\Local\\Alpha\\Cache'],
+            skipped: []
+          }
+        }),
+        log: vi.fn().mockResolvedValue({ ok: true, data: [] })
       }
     }
   })
@@ -112,6 +122,13 @@ describe('AppsPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: '清理非必要缓存' })[0])
     const dialog = await screen.findByRole('dialog', { name: '清理预览' })
     expect(dialog).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '执行清理（T13 接入）' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: '执行清理' }))
+    await waitFor(() => {
+      expect(window.api.clean.execute).toHaveBeenCalledWith({
+        planId: 'plan-1',
+        selectedPaths: ['C:\\Users\\Alice\\AppData\\Local\\Alpha\\Cache']
+      })
+    })
+    expect(await screen.findByRole('dialog', { name: '清理结果' })).toBeInTheDocument()
   })
 })

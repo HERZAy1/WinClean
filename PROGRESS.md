@@ -15,7 +15,7 @@
 | T10 | 页面一：文件关系树 + 未归属面板 | T09 | ✅ 已验收 | 255f065 |
 | T11 | 软件占用三段拆分 | T09 | ✅ 已验收 | 0333bc5 |
 | T12 | 页面二：软件占用分析 | T11 | ✅ 已验收 | c6aac46 |
-| T13 | 一键清理与安全拦截 | T11, T12 | ⬜ | |
+| T13 | 一键清理与安全拦截 | T11, T12 | ✅ 已验收 | |
 | T14 | 打包与全流程回归 | 全部 | ⬜ | |
 
 状态图例：⬜ 未开始 / 🔄 进行中 / ✅ 已验收 / ❌ 被打回
@@ -89,3 +89,9 @@
 - 契约变更：`SizeBreakdown` 增加可选 `publisher`，`docs/CONTRACT.md` 与 `src/shared/types.ts` 已同步。
 - 遗留问题：预览对话框已对接 `clean:preview`，但执行按钮保持 disabled，等待 T13 完成计划与执行；真实运行态预览需 T13 后端。
 - 给下一个任务的提示：页面二入口 `src/renderer/src/pages/AppsPage.tsx`，三段条 `StackedBar.tsx`；汇总卡/搜索/排序/>100MB 过滤/展开明细/预览对话框均已实现。组件测试覆盖排序、搜索过滤、展开、预览对话框。
+
+### 2026-10-23 · T13 一键清理与安全拦截
+- 状态：✅ 已验收
+- 契约变更：`CleanPlan` 增加可选 `blockedCount`，`docs/CONTRACT.md` 与 `src/shared/types.ts` 已同步。
+- 遗留问题：真实回收站删除未在测试中执行（`removePath` 的 `shell.trashItem` 路径需在普通桌面/虚拟机复验）；自动化用 mock remove 验证计划、子集校验、日志与文件表清理。
+- 给下一个任务的提示：`CleanService.preview/execute/log` 已完成；`clean:execute` 只接受 planId + selectedPaths 且必须是计划子集，执行前再次 guard + lstat 链接检查；`src/main/clean/delete.ts` 是唯一 `shell.trashItem`/`fs.rm` 封装点。安全测试 `src/main/clean/safety.test.ts` 38 项，`service.test.ts` 4 项。

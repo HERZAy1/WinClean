@@ -113,6 +113,7 @@ export interface CleanPlan {
   items: CleanItem[]
   estimatedFreeBytes: number
   mode: 'recycle' | 'permanent'
+  blockedCount?: number
 }
 
 export interface CleanResult {

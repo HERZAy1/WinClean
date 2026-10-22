@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CleanItem, CleanPlan, SizeBreakdown } from '../../../shared/types'
+import type {
+  CleanItem,
+  CleanLogEntry,
+  CleanPlan,
+  CleanResult,
+  SizeBreakdown
+} from '../../../shared/types'
 import { AnalysisPanel } from '../components/analysis/AnalysisPanel'
 import { StackedBar } from '../components/apps/StackedBar'
 import { Badge, Button, Card, Select, Switch } from '../components/ui'
@@ -38,6 +44,11 @@ export function AppsPage(): React.JSX.Element {
   const [preview, setPreview] = useState<CleanPlan | null>(null)
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set())
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const [executing, setExecuting] = useState(false)
+  const [cleanResult, setCleanResult] = useState<CleanResult | null>(null)
+  const [logOpen, setLogOpen] = useState(false)
+  const [logEntries, setLogEntries] = useState<CleanLogEntry[]>([])
   const analysisActive = useAnalysisStore((state) => state.active)
   const analysisError = useAnalysisStore((state) => state.error)
   const startAnalysis = useAnalysisStore((state) => state.start)
@@ -160,6 +171,7 @@ export function AppsPage(): React.JSX.Element {
       return
     }
     setPreview(result.data)
+    setConfirmText('')
     setSelectedPaths(
       new Set(
         result.data.items
@@ -167,6 +179,48 @@ export function AppsPage(): React.JSX.Element {
           .map((item) => item.path)
       )
     )
+  }
+
+  async function handleExecute(): Promise<void> {
+    if (!preview || selectedPaths.size === 0) {
+      return
+    }
+    if (
+      preview.mode === 'permanent' &&
+      confirmText.trim() !== zhCN.appsPage.permanentConfirmWord
+    ) {
+      return
+    }
+
+    setExecuting(true)
+    const result = await window.api.clean.execute({
+      planId: preview.planId,
+      selectedPaths: [...selectedPaths]
+    })
+    setExecuting(false)
+    if (!result.ok) {
+      setError(result.error.message)
+      return
+    }
+    setCleanResult(result.data)
+    setPreview(null)
+    setConfirmText('')
+    if (scanId) {
+      void loadApps(scanId)
+    }
+    void loadLog()
+  }
+
+  async function loadLog(): Promise<void> {
+    const result = await window.api.clean.log({ limit: 50 })
+    if (result.ok) {
+      setLogEntries(result.data)
+    }
+  }
+
+  function openLog(): void {
+    setLogOpen(true)
+    void loadLog()
   }
 
   async function handleAnalyze(): Promise<void> {
@@ -205,6 +259,13 @@ export function AppsPage(): React.JSX.Element {
             onClick={() => void handleAnalyze()}
           >
             {analysisActive ? zhCN.appsPage.analyzing : zhCN.appsPage.analyze}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={openLog}
+          >
+            {zhCN.appsPage.log}
           </Button>
         </div>
       </header>
@@ -339,6 +400,12 @@ export function AppsPage(): React.JSX.Element {
 
           <div className="apps-footer">
             <Button
+              variant="ghost"
+              onClick={openLog}
+            >
+              {zhCN.appsPage.log}
+            </Button>
+            <Button
               variant="primary"
               disabled={previewLoading}
               onClick={() => void handlePreview(filtered.map((app) => app.appId))}
@@ -430,6 +497,23 @@ export function AppsPage(): React.JSX.Element {
                 })}
               </div>
             )}
+            <div className="clean-modal__confirm">
+              <p className="settings-hint">
+                {zhCN.appsPage.executeHint
+                  .replace('{count}', String(selectedPaths.size))
+                  .replace('{size}', formatBytes(preview.estimatedFreeBytes))}
+              </p>
+              {preview.mode === 'permanent' ? (
+                <label className="clean-modal__confirm-field">
+                  <span>{zhCN.appsPage.permanentConfirmLabel}</span>
+                  <input
+                    className="ui-input"
+                    value={confirmText}
+                    onChange={(event) => setConfirmText(event.target.value)}
+                  />
+                </label>
+              ) : null}
+            </div>
             <footer className="clean-modal__footer">
               <Button
                 variant="secondary"
@@ -439,14 +523,124 @@ export function AppsPage(): React.JSX.Element {
               </Button>
               <Button
                 variant="primary"
-                disabled
-                title={zhCN.appsPage.previewExecute}
+                disabled={
+                  executing ||
+                  selectedPaths.size === 0 ||
+                  (preview.mode === 'permanent' &&
+                    confirmText.trim() !== zhCN.appsPage.permanentConfirmWord)
+                }
+                onClick={() => void handleExecute()}
               >
-                {zhCN.appsPage.previewExecute}
+                {executing ? zhCN.appsPage.executing : zhCN.appsPage.previewExecute}
               </Button>
             </footer>
           </div>
         </div>
+      ) : null}
+
+      {cleanResult ? (
+        <div className="modal-backdrop">
+          <div
+            className="clean-modal clean-result"
+            role="dialog"
+            aria-modal="true"
+            aria-label={zhCN.appsPage.resultTitle}
+          >
+            <header className="clean-modal__header">
+              <div>
+                <span className="eyebrow">{zhCN.appsPage.resultTitle}</span>
+                <h3>
+                  {zhCN.appsPage.resultFreed} {formatBytes(cleanResult.freedBytes)}
+                </h3>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setCleanResult(null)}
+              >
+                {zhCN.appsPage.previewCancel}
+              </Button>
+            </header>
+            <p className="settings-hint">
+              {cleanResult.succeeded.length} /{' '}
+              {cleanResult.succeeded.length + cleanResult.skipped.length}
+            </p>
+            {cleanResult.skipped.length > 0 ? (
+              <div className="clean-result__skipped">
+                <h4>
+                  {zhCN.appsPage.resultSkipped} {cleanResult.skipped.length}
+                </h4>
+                {cleanResult.skipped.map((item) => (
+                  <div
+                    key={`${item.path}-${item.reason}`}
+                    className="clean-result__skip-row"
+                  >
+                    <span className="clean-modal__path">{item.path}</span>
+                    <Badge tone="warning">{item.reason}</Badge>
+                    <span className="settings-hint">{item.detail ?? ''}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <footer className="clean-modal__footer">
+              <Button
+                variant="primary"
+                onClick={() => setCleanResult(null)}
+              >
+                {zhCN.appsPage.previewCancel}
+              </Button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
+
+      {logOpen ? (
+        <aside className="node-drawer clean-log-drawer">
+          <header className="node-drawer__header">
+            <div>
+              <span className="eyebrow">{zhCN.appsPage.log}</span>
+              <h3>{zhCN.appsPage.log}</h3>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setLogOpen(false)}
+            >
+              {zhCN.appsPage.previewCancel}
+            </Button>
+          </header>
+          {logEntries.length === 0 ? (
+            <p className="unowned-empty">{zhCN.appsPage.logEmpty}</p>
+          ) : (
+            <div className="clean-log">
+              {logEntries.map((entry) => (
+                <div
+                  key={`${entry.ts}-${entry.path}`}
+                  className="clean-log__row"
+                >
+                  <span className="clean-modal__path">{entry.path}</span>
+                  <span>{formatBytes(entry.sizeBytes)}</span>
+                  <Badge
+                    tone={
+                      entry.result === 'skipped'
+                        ? 'warning'
+                        : entry.result === 'deleted'
+                          ? 'danger'
+                          : 'success'
+                    }
+                  >
+                    {entry.result === 'trashed'
+                      ? zhCN.appsPage.logResultTrashed
+                      : entry.result === 'deleted'
+                        ? zhCN.appsPage.logResultDeleted
+                        : zhCN.appsPage.logResultSkipped}
+                  </Badge>
+                  <span className="settings-hint">{entry.detail ?? ''}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
       ) : null}
     </section>
   )

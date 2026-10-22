@@ -235,6 +235,7 @@
 .apps-footer {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
   margin-top: 16px;
 }
 
@@ -315,6 +316,69 @@
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.clean-modal__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.clean-modal__confirm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.clean-result__skipped {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  overflow: auto;
+}
+
+.clean-result__skipped h4 {
+  margin: 0;
+  color: var(--color-warning);
+  font-size: 12px;
+}
+
+.clean-result__skip-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.8fr) 70px minmax(100px, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--color-border);
+  font-size: 11px;
+}
+
+.clean-log-drawer {
+  width: 520px;
+}
+
+.clean-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  overflow: auto;
+}
+
+.clean-log__row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.8fr) 64px 90px minmax(80px, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 7px 0;
+  border-top: 1px solid var(--color-border);
+  font-size: 11px;
 }
 
 .clean-modal__footer {
