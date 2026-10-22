@@ -16,8 +16,8 @@ export function saveRegistrySnapshot(
   const insertApp = db.prepare(`
     INSERT OR REPLACE INTO apps
       (id, name, publisher, version, installLocation, uninstallString, source, registryKeys,
-       hidden, exePaths, publisherKeys, servicePaths)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       hidden, exePaths, publisherKeys, servicePaths, uwpPackage)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
   const insertRegistry = db.prepare(`
     INSERT INTO registry_entries (scanId, hive, keyPath, valueName, valueData, appId)
@@ -41,7 +41,8 @@ export function saveRegistrySnapshot(
         app.hidden ? 1 : 0,
         JSON.stringify(app.exePaths),
         JSON.stringify(app.publisherKeys),
-        JSON.stringify(app.servicePaths)
+        JSON.stringify(app.servicePaths),
+        app.uwpPackage ?? null
       )
     }
 

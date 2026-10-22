@@ -8,6 +8,7 @@ export interface CollectedApp extends InstalledApp {
   exePaths: string[]
   publisherKeys: string[]
   servicePaths: string[]
+  uwpPackage?: string
 }
 
 export interface ParsedRegistryEntry extends Omit<RegistryEntry, 'id'> {
@@ -288,7 +289,8 @@ export function parseRegistrySnapshot(raw: unknown): ParsedRegistrySnapshot {
       hidden: false,
       exePaths: [],
       publisherKeys: [],
-      servicePaths: []
+      servicePaths: [],
+      uwpPackage: packageFullName
     })
   }
 

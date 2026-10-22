@@ -10,7 +10,7 @@
 | T05 | 文件扫描器与进度 | T04 | ✅ 已验收 | b2883a5 |
 | T06 | 系统/用户文件分类 | T05 | ✅ 已验收 | d305c64 |
 | T07 | 注册表与已安装软件采集 | T04 | ✅ 已验收 | 69d22fa |
-| T08 | 规则式归属引擎 | T06, T07 | ⬜ | |
+| T08 | 规则式归属引擎 | T06, T07 | ✅ 已验收 | |
 | T09 | LLM 归属补全与未归属分析 | T03, T08 | ⬜ | |
 | T10 | 页面一：文件关系树 + 未归属面板 | T09 | ⬜ | |
 | T11 | 软件占用三段拆分 | T09 | ⬜ | |
@@ -62,3 +62,8 @@
 - 状态：✅ 已验收
 - 遗留问题：本 DSH 的 Electron 子进程执行 `Get-AppxPackage` 返回 0 条，而同一命令在普通 PowerShell/Node 测试进程返回 164 条；已实现 `-AllUsers` 失败后回退当前用户，普通桌面仍需复验 UWP。真实采集到 100 个 registry 应用、102 条注册表项。
 - 给下一个任务的提示：解析入口 `src/main/registry/parse.ts`，采集脚本 `src/main/registry/collect.ts`，落库 `src/main/registry/service.ts`。`apps` 表新增 `hidden/exePaths/publisherKeys/servicePaths`，`registry_entries` 按 scanId 写入。T08 可直接使用 apps 的 installLocation/exePaths/publisherKeys。无任何注册表写操作，grep 无命中。
+
+### 2026-10-23 · T08 规则式归属引擎
+- 状态：✅ 已验收
+- 遗留问题：未完成真实 C 盘全量扫描后的归属比例统计（T05 已说明全盘扫描耗时）；已用合成文件系统 + App 列表覆盖 R1~R6、冲突、歧义、名称规范化。
+- 给下一个任务的提示：纯规则入口 `src/main/ownership/engine.ts`，数据库应用 `src/main/ownership/apply.ts`。R1=0.98、R2=0.95、R3=0.85/0.8、R4=0.9、R5=0.6、R6=1.0/0.8；置信度差 <0.1 写入 appId=NULL 的歧义 ownership，供 T09 消费。流水线阶段 `rule-matching` 已接入，统计通过进度 message 暴露。

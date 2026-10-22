@@ -18,7 +18,8 @@ function createDb(): Database.Database {
       hidden INTEGER NOT NULL DEFAULT 0,
       exePaths TEXT NOT NULL DEFAULT '[]',
       publisherKeys TEXT NOT NULL DEFAULT '[]',
-      servicePaths TEXT NOT NULL DEFAULT '[]'
+      servicePaths TEXT NOT NULL DEFAULT '[]',
+      uwpPackage TEXT
     );
     CREATE TABLE registry_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -9,6 +9,7 @@ import { registerSystemIpc } from './ipc/system'
 import { registerTreeIpc } from './ipc/tree'
 import { applyClassification } from './classify/apply'
 import { buildRules } from './classify/rules'
+import { applyRuleOwnership, formatOwnershipStats } from './ownership/apply'
 import { collectAndSaveRegistry } from './registry/service'
 import { ScanService } from './scan/service'
 import { electronSecretStore } from './settings/electron-secret-store'
@@ -66,6 +67,10 @@ async function bootstrap(): Promise<void> {
 
     scanService.reportStage('classifying', '正在分类系统与用户文件…')
     applyClassification(scanId, buildRules(drives))
+
+    scanService.reportStage('rule-matching', '正在匹配软件归属…')
+    const stats = applyRuleOwnership(scanId)
+    scanService.reportStage('rule-matching', formatOwnershipStats(stats))
   })
   registerSettingsIpc(settingsService)
   registerLlmIpc(settingsService)

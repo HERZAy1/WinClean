@@ -52,7 +52,8 @@ const SCHEMA_SQL = `
     hidden INTEGER NOT NULL DEFAULT 0,
     exePaths TEXT NOT NULL DEFAULT '[]',
     publisherKeys TEXT NOT NULL DEFAULT '[]',
-    servicePaths TEXT NOT NULL DEFAULT '[]'
+    servicePaths TEXT NOT NULL DEFAULT '[]',
+    uwpPackage TEXT
   );
 
   CREATE TABLE IF NOT EXISTS ownerships (
@@ -139,6 +140,7 @@ export function initDatabase(): Database.Database {
   ensureColumn(database, 'apps', 'exePaths', "TEXT NOT NULL DEFAULT '[]'")
   ensureColumn(database, 'apps', 'publisherKeys', "TEXT NOT NULL DEFAULT '[]'")
   ensureColumn(database, 'apps', 'servicePaths', "TEXT NOT NULL DEFAULT '[]'")
+  ensureColumn(database, 'apps', 'uwpPackage', 'TEXT')
 
   connection = database
   return connection
