@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Button } from '../components/ui'
 import { AppsIcon, DiskIcon, MoonIcon, ScanIcon, SettingsIcon, SunIcon, TreeIcon } from '../components/icons'
 import { zhCN } from '../i18n/zh-CN'
+import { useSystemStore } from '../stores/useSystem'
 import { useThemeStore } from '../stores/useTheme'
 
 const navigation = [
@@ -21,9 +23,17 @@ export function AppShell(): React.JSX.Element {
   const location = useLocation()
   const resolvedTheme = useThemeStore((state) => state.resolvedTheme)
   const toggleTheme = useThemeStore((state) => state.toggleTheme)
+  const elevated = useSystemStore((state) => state.elevated)
+  const elevationError = useSystemStore((state) => state.elevationError)
+  const loadElevation = useSystemStore((state) => state.loadElevation)
+  const relaunchElevated = useSystemStore((state) => state.relaunchElevated)
   const meta = routeMeta[location.pathname] ?? routeMeta['/files']
   const isDark = resolvedTheme === 'dark'
   const themeLabel = isDark ? zhCN.topbar.switchToLight : zhCN.topbar.switchToDark
+
+  useEffect(() => {
+    void loadElevation()
+  }, [loadElevation])
 
   return (
     <div className="app-shell">
@@ -89,6 +99,25 @@ export function AppShell(): React.JSX.Element {
             </button>
           </div>
         </header>
+
+        {elevated === false ? (
+          <div
+            className="elevation-banner"
+            role="status"
+          >
+            <span className="elevation-banner__text">{zhCN.elevation.warning}</span>
+            {elevationError ? (
+              <span className="elevation-banner__error">{elevationError}</span>
+            ) : null}
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => void relaunchElevated()}
+            >
+              {zhCN.elevation.restart}
+            </Button>
+          </div>
+        ) : null}
 
         <main className="content">
           <Outlet />

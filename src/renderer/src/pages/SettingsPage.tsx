@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { LlmProvider } from '../../../shared/types'
 import { ProviderCard } from '../components/settings/ProviderCard'
-import { Badge, Card, Select, Switch } from '../components/ui'
+import { Card, ProgressBar, Select, Switch } from '../components/ui'
 import { zhCN } from '../i18n/zh-CN'
+import { formatBytes } from '../lib/format'
 import { useSettingsStore } from '../stores/useSettings'
+import { useSystemStore } from '../stores/useSystem'
 import { useThemeStore, type ThemePreference } from '../stores/useTheme'
 
 export function SettingsPage(): React.JSX.Element {
@@ -17,11 +19,16 @@ export function SettingsPage(): React.JSX.Element {
   const testConnection = useSettingsStore((state) => state.testConnection)
   const theme = useThemeStore((state) => state.theme)
   const setTheme = useThemeStore((state) => state.setTheme)
+  const drives = useSystemStore((state) => state.drives)
+  const drivesLoading = useSystemStore((state) => state.drivesLoading)
+  const drivesError = useSystemStore((state) => state.drivesError)
+  const loadDrives = useSystemStore((state) => state.loadDrives)
   const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
     void load()
-  }, [load])
+    void loadDrives()
+  }, [load, loadDrives])
 
   async function handleProviderSave(
     provider: LlmProvider,
@@ -81,6 +88,22 @@ export function SettingsPage(): React.JSX.Element {
 
   async function handleActiveProvider(provider: LlmProvider): Promise<void> {
     const result = await save({ activeProvider: provider })
+    setNotice(result.ok ? zhCN.settingsPage.saved : null)
+  }
+
+  async function handleDriveToggle(letter: string, checked: boolean): Promise<void> {
+    if (!settings) {
+      return
+    }
+
+    const selected = new Set(settings.scanDrives)
+    if (checked) {
+      selected.add(letter)
+    } else {
+      selected.delete(letter)
+    }
+
+    const result = await save({ scanDrives: [...selected].sort() })
     setNotice(result.ok ? zhCN.settingsPage.saved : null)
   }
 
@@ -184,11 +207,54 @@ export function SettingsPage(): React.JSX.Element {
               </Select>
 
               <div className="settings-drives">
-                <div className="settings-drives__heading">
-                  <span className="ui-field__label">{zhCN.settingsPage.scanDrives}</span>
-                  <Badge tone="neutral">{zhCN.settingsPage.scanDrivesTask}</Badge>
-                </div>
-                <p className="settings-hint">{zhCN.settingsPage.scanDrivesPending}</p>
+                <span className="ui-field__label">{zhCN.settingsPage.scanDrives}</span>
+                <p className="settings-hint">{zhCN.settingsPage.scanDrivesHint}</p>
+                {drivesLoading ? (
+                  <p className="settings-hint">{zhCN.drives.loading}</p>
+                ) : drivesError ? (
+                  <p className="settings-test-result settings-test-result--error">{drivesError}</p>
+                ) : drives.length === 0 ? (
+                  <p className="settings-hint">{zhCN.drives.select}</p>
+                ) : (
+                  <div className="drive-list">
+                    {drives.map((drive) => {
+                      const checked = settings.scanDrives.includes(drive.letter)
+                      const label = drive.label || drive.fsType || drive.letter
+
+                      return (
+                        <label
+                          key={drive.letter}
+                          className={`drive-option${checked ? ' is-selected' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(event) =>
+                              void handleDriveToggle(drive.letter, event.target.checked)
+                            }
+                          />
+                          <div className="drive-option__body">
+                            <div className="drive-option__header">
+                              <span className="drive-option__letter">{drive.letter}:</span>
+                              <span className="drive-option__label">{label}</span>
+                              <span className="drive-option__size">
+                                {formatBytes(drive.usedBytes)} / {formatBytes(drive.totalBytes)}
+                              </span>
+                            </div>
+                            <ProgressBar
+                              value={drive.usedBytes}
+                              max={drive.totalBytes}
+                              label={`${drive.letter}: ${zhCN.drives.used}`}
+                            />
+                            <span className="drive-option__free">
+                              {zhCN.drives.free} {formatBytes(drive.freeBytes)}
+                            </span>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </Card>

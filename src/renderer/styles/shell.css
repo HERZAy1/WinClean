@@ -170,6 +170,30 @@
   border-color: var(--color-border-strong);
 }
 
+.elevation-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 40px;
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+  border-bottom: 1px solid var(--color-warning);
+  font-size: 13px;
+}
+
+.elevation-banner__text {
+  font-weight: 600;
+}
+
+.elevation-banner__error {
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
+.elevation-banner .ui-button {
+  margin-left: auto;
+}
+
 .content {
   width: 100%;
   max-width: 1280px;
@@ -356,10 +380,76 @@
   grid-column: 1 / -1;
 }
 
-.settings-drives__heading {
+.drive-list {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.drive-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.drive-option:hover {
+  border-color: var(--color-border-strong);
+}
+
+.drive-option.is-selected {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-muted);
+}
+
+.drive-option input {
+  margin-top: 3px;
+  accent-color: var(--color-accent);
+}
+
+.drive-option__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 8px;
+  min-width: 0;
+}
+
+.drive-option__header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.drive-option__letter {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.drive-option__label {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.drive-option__size {
+  margin-left: auto;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.drive-option__free {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
 }
 
 .settings-banner {
@@ -515,6 +605,10 @@
 
   .topbar {
     padding: 0 24px;
+  }
+
+  .elevation-banner {
+    padding: 10px 24px;
   }
 
   .content {

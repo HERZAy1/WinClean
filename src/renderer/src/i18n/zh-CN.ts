@@ -12,6 +12,19 @@ export const zhCN = {
   sidebar: {
     localAnalysis: '本地分析'
   },
+  elevation: {
+    warning: '当前非管理员，部分目录将无法读取',
+    restart: '以管理员重启',
+    restartFailed: '以管理员重启失败'
+  },
+  drives: {
+    loading: '正在读取磁盘…',
+    loadFailed: '磁盘读取失败',
+    select: '选择要扫描的磁盘',
+    used: '已用',
+    total: '总量',
+    free: '可用'
+  },
   topbar: {
     scan: '开始扫描',
     scanPending: '扫描功能将在后续任务接入',
@@ -62,8 +75,7 @@ export const zhCN = {
     cleanPermanent: '永久删除',
     permanentConfirm: '永久删除不会进入回收站，确认启用？',
     scanDrives: '扫描盘符',
-    scanDrivesPending: '磁盘枚举将在 T04 接入',
-    scanDrivesTask: 'T04',
+    scanDrivesHint: '仅扫描勾选的本地固定磁盘。',
     providerSaved: '服务商配置已保存'
   },
   pages: {

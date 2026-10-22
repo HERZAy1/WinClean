@@ -4,12 +4,14 @@ import { closeDatabase, initDatabase } from './db'
 import { registerLlmIpc } from './ipc/llm'
 import { registerFallbackHandlers } from './ipc/registry'
 import { registerSettingsIpc } from './ipc/settings'
+import { registerSystemIpc } from './ipc/system'
 import { electronSecretStore } from './settings/electron-secret-store'
 import { SettingsService } from './settings/service'
 
 function registerIpcHandlers(settingsService: SettingsService): void {
   registerSettingsIpc(settingsService)
   registerLlmIpc(settingsService)
+  registerSystemIpc()
   registerFallbackHandlers()
 }
 
