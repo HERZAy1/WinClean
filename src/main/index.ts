@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { closeDatabase, initDatabase } from './db'
 import { registerAnalysisIpc } from './ipc/analysis'
+import { registerAppsIpc } from './ipc/apps'
 import { registerLlmIpc } from './ipc/llm'
 import { registerFallbackHandlers } from './ipc/registry'
 import { registerScanIpc } from './ipc/scan'
@@ -11,6 +12,7 @@ import { registerTreeIpc } from './ipc/tree'
 import { applyClassification } from './classify/apply'
 import { buildRules } from './classify/rules'
 import { AnalysisService } from './analysis/service'
+import { buildBreakdowns } from './breakdown/service'
 import { applyRuleOwnership, formatOwnershipStats } from './ownership/apply'
 import { collectAndSaveRegistry } from './registry/service'
 import { ScanService } from './scan/service'
@@ -74,6 +76,9 @@ async function bootstrap(): Promise<void> {
     scanService.reportStage('rule-matching', '正在匹配软件归属…')
     const stats = applyRuleOwnership(scanId)
     scanService.reportStage('rule-matching', formatOwnershipStats(stats))
+
+    scanService.reportStage('breakdown', '正在拆分软件占用…')
+    buildBreakdowns(scanId)
   })
   registerSettingsIpc(settingsService)
   registerLlmIpc(settingsService)
@@ -81,6 +86,7 @@ async function bootstrap(): Promise<void> {
   registerScanIpc(scanService)
   registerTreeIpc()
   registerAnalysisIpc(analysisService)
+  registerAppsIpc()
   registerFallbackHandlers()
   createWindow()
 

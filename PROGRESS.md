@@ -13,7 +13,7 @@
 | T08 | 规则式归属引擎 | T06, T07 | ✅ 已验收 | 2454499 |
 | T09 | LLM 归属补全与未归属分析 | T03, T08 | ✅ 已验收 | 48d199e |
 | T10 | 页面一：文件关系树 + 未归属面板 | T09 | ✅ 已验收 | 255f065 |
-| T11 | 软件占用三段拆分 | T09 | ⬜ | |
+| T11 | 软件占用三段拆分 | T09 | ✅ 已验收 | |
 | T12 | 页面二：软件占用分析 | T11 | ⬜ | |
 | T13 | 一键清理与安全拦截 | T11, T12 | ⬜ | |
 | T14 | 打包与全流程回归 | 全部 | ⬜ | |
@@ -78,3 +78,8 @@
 - 契约变更：新增 `scan:latest` 与 `shell:showItemInFolder` 通道；`docs/CONTRACT.md`、channels、preload 已同步。
 - 遗留问题：未保存浅色/深色截图，仅做 CDP 视觉/布局冒烟；未在 10 万节点真实 Electron 窗口中做交互帧率测量，后端基准为 roots 40ms、首次展开 12ms（内存库 100k）。
 - 给下一个任务的提示：关系树使用 `@xyflow/react` + `d3-hierarchy`，后端 `tree:getRoots/getChildren` 支持 App 分组、目录懒加载和 100 条 +N 分页；未归属列表用 `@tanstack/react-virtual`，`unowned:explain` 接入 AI。运行态冒烟：57 个根、React Flow 18 个可见节点、未归属 1 行。
+
+### 2026-10-23 · T11 软件占用三段拆分
+- 状态：✅ 已验收
+- 遗留问题：LLM 复核 >50MB 未命中目录尚未接入实际调用，当前为规则分类 + `isPathCleanable` 本地降级；T12/T13 使用规则结果。
+- 给下一个任务的提示：规则入口 `src/main/breakdown/rules.ts`（40 条 disposable + 18 条 sensitive），汇总/落库 `src/main/breakdown/service.ts`，安全校验 `src/main/safety/guard.ts`。流水线阶段 `breakdown` 已接入，`size_items` 按文件写入，`apps:list/getBreakdown` 已实现；恒等式 body+essential+disposable=total。测试：63 个分类用例、44 个 guard 用例。
