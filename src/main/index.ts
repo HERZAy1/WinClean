@@ -1,21 +1,14 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
-import { COMMAND_CHANNELS } from '../shared/channels'
-import type { Result } from '../shared/types'
 import { closeDatabase, initDatabase } from './db'
+import { registerFallbackHandlers } from './ipc/registry'
+import { registerSettingsIpc } from './ipc/settings'
+import { electronSecretStore } from './settings/electron-secret-store'
+import { SettingsService } from './settings/service'
 
-const notImplemented = (): Result<never> => ({
-  ok: false,
-  error: {
-    code: 'INTERNAL',
-    message: '未实现'
-  }
-})
-
-function registerIpcHandlers(): void {
-  for (const channel of COMMAND_CHANNELS) {
-    ipcMain.handle(channel, notImplemented)
-  }
+function registerIpcHandlers(settingsService: SettingsService): void {
+  registerSettingsIpc(settingsService)
+  registerFallbackHandlers()
 }
 
 function createWindow(): void {
@@ -55,7 +48,8 @@ async function bootstrap(): Promise<void> {
   await app.whenReady()
 
   initDatabase()
-  registerIpcHandlers()
+  const settingsService = new SettingsService(app.getPath('userData'), electronSecretStore)
+  registerIpcHandlers(settingsService)
   createWindow()
 
   app.on('activate', () => {

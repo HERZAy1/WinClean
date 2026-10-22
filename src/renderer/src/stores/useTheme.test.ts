@@ -1,11 +1,14 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { THEME_STORAGE_KEY, useThemeStore } from './useTheme'
+import type { AppSettings } from '../../../shared/types'
+import { useThemeStore, type ThemePreference } from './useTheme'
 
 let systemPrefersDark = false
 let changeListeners: ((event: MediaQueryListEvent) => void)[] = []
 let originalMatchMedia: typeof window.matchMedia | undefined
+let save: ReturnType<typeof vi.fn>
+let get: ReturnType<typeof vi.fn>
 
 const mediaQuery = {
   get matches() {
@@ -28,6 +31,16 @@ const mediaQuery = {
   dispatchEvent: vi.fn(() => true)
 }
 
+function settingsResult(theme: ThemePreference): {
+  ok: true
+  data: AppSettings
+} {
+  return {
+    ok: true,
+    data: { theme } as unknown as AppSettings
+  }
+}
+
 function emitSystemChange(prefersDark: boolean): void {
   systemPrefersDark = prefersDark
   const event = { matches: prefersDark } as MediaQueryListEvent
@@ -35,10 +48,11 @@ function emitSystemChange(prefersDark: boolean): void {
 }
 
 beforeEach(() => {
-  localStorage.clear()
   systemPrefersDark = false
   changeListeners = []
   originalMatchMedia = window.matchMedia
+  get = vi.fn().mockResolvedValue(settingsResult('system'))
+  save = vi.fn().mockResolvedValue(settingsResult('system'))
   useThemeStore.getState().dispose()
   useThemeStore.setState({ theme: 'system', resolvedTheme: 'light' })
   document.documentElement.removeAttribute('data-theme')
@@ -48,11 +62,14 @@ beforeEach(() => {
     writable: true,
     value: vi.fn(() => mediaQuery as unknown as MediaQueryList)
   })
+  Object.defineProperty(window, 'api', {
+    configurable: true,
+    value: { settings: { get, save } }
+  })
 })
 
 afterEach(() => {
   useThemeStore.getState().dispose()
-  localStorage.clear()
   Reflect.deleteProperty(window, 'api')
 
   if (originalMatchMedia) {
@@ -65,9 +82,9 @@ afterEach(() => {
 })
 
 describe('useTheme', () => {
-  it('system 模式跟随 matchMedia 变化', () => {
+  it('system 模式跟随 matchMedia 变化', async () => {
     systemPrefersDark = true
-    useThemeStore.getState().initialize()
+    await useThemeStore.getState().initialize()
 
     expect(useThemeStore.getState().theme).toBe('system')
     expect(useThemeStore.getState().resolvedTheme).toBe('dark')
@@ -79,9 +96,9 @@ describe('useTheme', () => {
     expect(document.documentElement.dataset.theme).toBe('light')
   })
 
-  it('显式主题不跟随系统变化', () => {
-    localStorage.setItem(THEME_STORAGE_KEY, 'dark')
-    useThemeStore.getState().initialize()
+  it('从 settings:get 恢复显式主题并忽略系统变化', async () => {
+    get.mockResolvedValue(settingsResult('dark'))
+    await useThemeStore.getState().initialize()
 
     expect(useThemeStore.getState().theme).toBe('dark')
     expect(useThemeStore.getState().resolvedTheme).toBe('dark')
@@ -91,20 +108,9 @@ describe('useTheme', () => {
     expect(useThemeStore.getState().resolvedTheme).toBe('dark')
   })
 
-  it('切换主题时写入 localStorage 并尝试同步主进程', () => {
-    const save = vi.fn().mockResolvedValue({
-      ok: false,
-      error: { code: 'INTERNAL', message: '未实现' }
-    })
-
-    Object.defineProperty(window, 'api', {
-      configurable: true,
-      value: { settings: { save } }
-    })
-
+  it('切换主题时通过 settings:save 持久化', () => {
     useThemeStore.getState().setTheme('dark')
 
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
     expect(save).toHaveBeenCalledWith({ theme: 'dark' })
     expect(document.documentElement.dataset.theme).toBe('dark')
   })

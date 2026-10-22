@@ -4,7 +4,7 @@
 |---|---|---|---|---|
 | T00 | 工程初始化与契约落地 | - | ✅ 已验收 | f46fc1c |
 | T01 | 主题系统与布局壳 | T00 | ✅ 已验收 | 42d885e |
-| T02 | 设置页与 API Key 加密存储 | T01 | ⬜ | |
+| T02 | 设置页与 API Key 加密存储 | T01 | ✅ 已验收 | |
 | T03 | LLM 适配层与连接测试 | T02 | ⬜ | |
 | T04 | 管理员提权与磁盘枚举 | T00 | ⬜ | |
 | T05 | 文件扫描器与进度 | T04 | ⬜ | |
@@ -31,3 +31,8 @@
 - 状态：✅ 已验收
 - 遗留问题：开发模式仍有 Electron CSP 提示；主题目前同时写 localStorage 并尝试 `settings:save`，T02 接通设置持久化后应移除 localStorage 回退。
 - 给下一个任务的提示：主题状态使用 `useThemeStore`，设计变量集中在 `src/renderer/styles/tokens.css`；布局壳、三页路由和 `/dev/ui` 组件预览已就绪。新增依赖 `react-router-dom`（路由要求）与 `happy-dom`（useTheme DOM 单测）。
+
+### 2026-10-23 · T02 设置页与 API Key 加密存储
+- 状态：✅ 已验收
+- 遗留问题：测试连接按钮暂为 disabled，T03 接入；扫描盘符仍为占位，T04 接入。设置页的“最近一次连接测试成功”状态将由 T03 在主进程维护。
+- 给下一个任务的提示：主进程设置入口为 `SettingsService`，API Key 通过 `safeStorage` 加密后写入 `secrets.bin`；渲染进程只能拿到 `hasApiKey`。主题已改为完全走 `settings:get/save`，localStorage 回退已移除。

@@ -4,24 +4,10 @@ import type { AppSettings } from '../../../shared/types'
 export type ThemePreference = AppSettings['theme']
 export type ResolvedTheme = 'light' | 'dark'
 
-export const THEME_STORAGE_KEY = 'winclean.theme'
 const SYSTEM_DARK_QUERY = '(prefers-color-scheme: dark)'
 
 let systemMediaQuery: MediaQueryList | null = null
 let systemMediaListener: ((event: MediaQueryListEvent) => void) | null = null
-
-function isThemePreference(value: string | null): value is ThemePreference {
-  return value === 'light' || value === 'dark' || value === 'system'
-}
-
-function readStoredTheme(): ThemePreference | null {
-  try {
-    const value = window.localStorage.getItem(THEME_STORAGE_KEY)
-    return isThemePreference(value) ? value : null
-  } catch {
-    return null
-  }
-}
 
 function getSystemPrefersDark(): boolean {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -48,19 +34,6 @@ function applyResolvedTheme(theme: ResolvedTheme): void {
   document.documentElement.style.colorScheme = theme
 }
 
-function persistTheme(theme: ThemePreference): void {
-  try {
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
-  } catch {
-    // 隐私模式或存储受限时仍允许本次会话切换主题。
-  }
-
-  // TODO(T02): settings:save 接通后移除 localStorage 回退，改由主进程统一持久化并读取。
-  if (typeof window !== 'undefined' && window.api) {
-    void window.api.settings.save({ theme }).catch(() => undefined)
-  }
-}
-
 function removeSystemMediaListener(): void {
   if (systemMediaQuery && systemMediaListener) {
     systemMediaQuery.removeEventListener('change', systemMediaListener)
@@ -70,10 +43,27 @@ function removeSystemMediaListener(): void {
   systemMediaListener = null
 }
 
+async function loadThemeFromSettings(): Promise<ThemePreference> {
+  try {
+    const result = await window.api.settings.get()
+    return result.ok ? result.data.theme : 'system'
+  } catch {
+    return 'system'
+  }
+}
+
+function persistTheme(theme: ThemePreference): void {
+  try {
+    void window.api.settings.save({ theme }).catch(() => undefined)
+  } catch {
+    // 设置服务不可用时仍允许本次会话切换主题。
+  }
+}
+
 interface ThemeState {
   theme: ThemePreference
   resolvedTheme: ResolvedTheme
-  initialize: () => void
+  initialize: () => Promise<void>
   dispose: () => void
   setTheme: (theme: ThemePreference) => void
   toggleTheme: () => void
@@ -83,12 +73,16 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   theme: 'system',
   resolvedTheme: 'light',
 
-  initialize: () => {
+  initialize: async () => {
     removeSystemMediaListener()
 
-    const theme = readStoredTheme() ?? 'system'
-    const resolvedTheme = resolveTheme(theme, getSystemPrefersDark())
+    const initialTheme: ThemePreference = 'system'
+    const initialResolved = resolveTheme(initialTheme, getSystemPrefersDark())
+    applyResolvedTheme(initialResolved)
+    set({ theme: initialTheme, resolvedTheme: initialResolved })
 
+    const theme = await loadThemeFromSettings()
+    const resolvedTheme = resolveTheme(theme, getSystemPrefersDark())
     applyResolvedTheme(resolvedTheme)
     set({ theme, resolvedTheme })
 
@@ -128,6 +122,6 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   }
 }))
 
-export function initializeTheme(): void {
-  useThemeStore.getState().initialize()
+export async function initializeTheme(): Promise<void> {
+  await useThemeStore.getState().initialize()
 }

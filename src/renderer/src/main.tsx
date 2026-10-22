@@ -8,7 +8,7 @@ import '../styles/shell.css'
 import { initializeTheme } from './stores/useTheme'
 import { zhCN } from './i18n/zh-CN'
 
-initializeTheme()
+void initializeTheme()
 
 const rootElement = document.getElementById('root')
 
