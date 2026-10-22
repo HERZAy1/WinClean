@@ -1,0 +1,10 @@
+node_modules
+out
+dist
+coverage
+files
+.tools
+.npm-cache
+.electron-cache
+.dev-user-data
+package-lock.json

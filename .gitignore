@@ -1,0 +1,12 @@
+node_modules/
+out/
+dist/
+coverage/
+files/
+.tools/
+.pnpm-store/
+.npm-cache/
+.electron-cache/
+.dev-user-data/
+*.log
+.DS_Store
