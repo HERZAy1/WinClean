@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import type { AppSettings, LlmProvider, Result } from '../../../shared/types'
+import type {
+  AppSettings,
+  LlmProvider,
+  Result,
+  TestConnectionResult
+} from '../../../shared/types'
 import { zhCN } from '../i18n/zh-CN'
 
 interface SettingsState {
@@ -10,6 +15,7 @@ interface SettingsState {
   save: (patch: Partial<AppSettings>) => Promise<Result<AppSettings>>
   setApiKey: (provider: LlmProvider, apiKey: string) => Promise<Result<void>>
   clearApiKey: (provider: LlmProvider) => Promise<Result<void>>
+  testConnection: (provider: LlmProvider) => Promise<Result<TestConnectionResult>>
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -56,6 +62,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     if (result.ok) {
       await get().load()
     } else {
+      set({ error: result.error.message })
+    }
+    return result
+  },
+
+  testConnection: async (provider) => {
+    const result = await window.api.llm.testConnection({ provider })
+    if (!result.ok) {
       set({ error: result.error.message })
     }
     return result

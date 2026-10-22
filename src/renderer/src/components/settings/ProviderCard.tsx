@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { LlmProvider, LlmProviderConfig } from '../../../../shared/types'
+import type {
+  LlmProvider,
+  LlmProviderConfig,
+  Result,
+  TestConnectionResult
+} from '../../../../shared/types'
 import { zhCN } from '../../i18n/zh-CN'
 import { Badge, Button, Card, Input } from '../ui'
 
@@ -9,6 +14,14 @@ interface ProviderCardProps {
   onSaveConfig: (values: { baseUrl: string; modelId: string }) => Promise<void>
   onSetApiKey: (apiKey: string) => Promise<boolean>
   onClearApiKey: () => Promise<void>
+  onTestConnection: () => Promise<Result<TestConnectionResult>>
+}
+
+interface TestState {
+  status: 'idle' | 'running' | 'success' | 'error'
+  latencyMs?: number
+  preview?: string
+  message?: string
 }
 
 export function ProviderCard({
@@ -16,14 +29,17 @@ export function ProviderCard({
   config,
   onSaveConfig,
   onSetApiKey,
-  onClearApiKey
+  onClearApiKey,
+  onTestConnection
 }: ProviderCardProps): React.JSX.Element {
   const [baseUrl, setBaseUrl] = useState(config.baseUrl)
   const [modelId, setModelId] = useState(config.modelId)
   const [apiKey, setApiKey] = useState('')
   const [busy, setBusy] = useState(false)
   const [keyNotice, setKeyNotice] = useState<string | null>(null)
+  const [testState, setTestState] = useState<TestState>({ status: 'idle' })
   const title = provider === 'openai' ? zhCN.settingsPage.openai : zhCN.settingsPage.anthropic
+  const canTest = config.hasApiKey && modelId.trim().length > 0
 
   useEffect(() => {
     setBaseUrl(config.baseUrl)
@@ -51,7 +67,28 @@ export function ProviderCard({
     setBusy(true)
     await onClearApiKey()
     setBusy(false)
+    setTestState({ status: 'idle' })
     setKeyNotice(zhCN.settingsPage.keyCleared)
+  }
+
+  async function handleTestConnection(): Promise<void> {
+    if (!canTest) {
+      return
+    }
+
+    setTestState({ status: 'running' })
+    await onSaveConfig({ baseUrl, modelId })
+    const result = await onTestConnection()
+
+    if (result.ok) {
+      setTestState({
+        status: 'success',
+        latencyMs: result.data.latencyMs,
+        preview: result.data.replyPreview
+      })
+    } else {
+      setTestState({ status: 'error', message: result.error.message })
+    }
   }
 
   return (
@@ -122,14 +159,46 @@ export function ProviderCard({
             <Button
               size="sm"
               variant="ghost"
-              disabled
-              title={zhCN.settingsPage.testPending}
+              disabled={!canTest || testState.status === 'running'}
+              title={!canTest ? zhCN.settingsPage.testNeedsConfig : undefined}
+              onClick={() => void handleTestConnection()}
             >
-              {zhCN.settingsPage.testConnection}
+              {testState.status === 'running'
+                ? zhCN.settingsPage.testRunning
+                : zhCN.settingsPage.testConnection}
             </Button>
-            <Badge tone="neutral">{zhCN.settingsPage.testUnverified}</Badge>
+            <Badge
+              tone={
+                testState.status === 'success'
+                  ? 'success'
+                  : testState.status === 'running'
+                    ? 'accent'
+                    : 'neutral'
+              }
+            >
+              {testState.status === 'success'
+                ? zhCN.settingsPage.testVerified
+                : zhCN.settingsPage.testUnverified}
+            </Badge>
           </div>
         </div>
+
+        {testState.status === 'success' ? (
+          <div className="settings-test-result">
+            <p>
+              {zhCN.settingsPage.testConnection} · {zhCN.settingsPage.testLatency}{' '}
+              {testState.latencyMs}ms
+            </p>
+            <p className="settings-hint">
+              {zhCN.settingsPage.testReply}：{testState.preview}
+            </p>
+          </div>
+        ) : null}
+        {testState.status === 'error' ? (
+          <p className="settings-test-result settings-test-result--error">
+            {zhCN.settingsPage.testFailed}：{testState.message}
+          </p>
+        ) : null}
       </div>
     </Card>
   )

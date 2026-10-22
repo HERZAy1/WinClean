@@ -14,6 +14,7 @@ export function SettingsPage(): React.JSX.Element {
   const save = useSettingsStore((state) => state.save)
   const setApiKey = useSettingsStore((state) => state.setApiKey)
   const clearApiKey = useSettingsStore((state) => state.clearApiKey)
+  const testConnection = useSettingsStore((state) => state.testConnection)
   const theme = useThemeStore((state) => state.theme)
   const setTheme = useThemeStore((state) => state.setTheme)
   const [notice, setNotice] = useState<string | null>(null)
@@ -138,6 +139,7 @@ export function SettingsPage(): React.JSX.Element {
               onSaveConfig={(values) => handleProviderSave('openai', values)}
               onSetApiKey={(apiKey) => handleSetApiKey('openai', apiKey)}
               onClearApiKey={() => handleClearApiKey('openai')}
+              onTestConnection={() => testConnection('openai')}
             />
             <ProviderCard
               provider="anthropic"
@@ -145,6 +147,7 @@ export function SettingsPage(): React.JSX.Element {
               onSaveConfig={(values) => handleProviderSave('anthropic', values)}
               onSetApiKey={(apiKey) => handleSetApiKey('anthropic', apiKey)}
               onClearApiKey={() => handleClearApiKey('anthropic')}
+              onTestConnection={() => testConnection('anthropic')}
             />
           </div>
 

@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { closeDatabase, initDatabase } from './db'
+import { registerLlmIpc } from './ipc/llm'
 import { registerFallbackHandlers } from './ipc/registry'
 import { registerSettingsIpc } from './ipc/settings'
 import { electronSecretStore } from './settings/electron-secret-store'
@@ -8,6 +9,7 @@ import { SettingsService } from './settings/service'
 
 function registerIpcHandlers(settingsService: SettingsService): void {
   registerSettingsIpc(settingsService)
+  registerLlmIpc(settingsService)
   registerFallbackHandlers()
 }
 
