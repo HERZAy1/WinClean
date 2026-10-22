@@ -1,8 +1,19 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Button } from '../components/ui'
-import { AppsIcon, DiskIcon, MoonIcon, ScanIcon, SettingsIcon, SunIcon, TreeIcon } from '../components/icons'
+import { Button, ProgressBar } from '../components/ui'
+import {
+  AppsIcon,
+  DiskIcon,
+  MoonIcon,
+  ScanIcon,
+  SettingsIcon,
+  StopIcon,
+  SunIcon,
+  TreeIcon
+} from '../components/icons'
 import { zhCN } from '../i18n/zh-CN'
+import { useScanStore, scanStatusText } from '../stores/useScan'
+import { useSettingsStore } from '../stores/useSettings'
 import { useSystemStore } from '../stores/useSystem'
 import { useThemeStore } from '../stores/useTheme'
 
@@ -27,13 +38,57 @@ export function AppShell(): React.JSX.Element {
   const elevationError = useSystemStore((state) => state.elevationError)
   const loadElevation = useSystemStore((state) => state.loadElevation)
   const relaunchElevated = useSystemStore((state) => state.relaunchElevated)
+  const settings = useSettingsStore((state) => state.settings)
+  const loadSettings = useSettingsStore((state) => state.load)
+  const scanning = useScanStore((state) => state.scanning)
+  const progress = useScanStore((state) => state.progress)
+  const errorCount = useScanStore((state) => state.errorCount)
+  const scanError = useScanStore((state) => state.error)
+  const startScan = useScanStore((state) => state.start)
+  const cancelScan = useScanStore((state) => state.cancel)
+  const handleProgress = useScanStore((state) => state.handleProgress)
+  const handleErrorCount = useScanStore((state) => state.handleErrorCount)
   const meta = routeMeta[location.pathname] ?? routeMeta['/files']
   const isDark = resolvedTheme === 'dark'
   const themeLabel = isDark ? zhCN.topbar.switchToLight : zhCN.topbar.switchToDark
+  const scanDrives = settings?.scanDrives ?? []
+  const canStart = scanDrives.length > 0
+  const scanLabel =
+    progress?.stage === 'cancelled'
+      ? zhCN.scan.cancelled
+      : progress?.stage === 'error'
+        ? zhCN.scan.failed
+        : scanning
+          ? zhCN.scan.start
+          : zhCN.scan.done
 
   useEffect(() => {
     void loadElevation()
-  }, [loadElevation])
+    if (!settings) {
+      void loadSettings()
+    }
+  }, [loadElevation, loadSettings, settings])
+
+  useEffect(() => {
+    const unsubscribeProgress = window.api.on('event:progress', handleProgress)
+    const unsubscribeErrors = window.api.on('event:scan-error-count', (payload) =>
+      handleErrorCount(payload.count)
+    )
+
+    return () => {
+      unsubscribeProgress()
+      unsubscribeErrors()
+    }
+  }, [handleErrorCount, handleProgress])
+
+  async function handleScanAction(): Promise<void> {
+    if (scanning) {
+      await cancelScan()
+      return
+    }
+
+    await startScan(scanDrives)
+  }
 
   return (
     <div className="app-shell">
@@ -80,13 +135,14 @@ export function AppShell(): React.JSX.Element {
 
           <div className="topbar__actions">
             <Button
-              variant="primary"
+              variant={scanning ? 'secondary' : 'primary'}
               size="sm"
-              leadingIcon={<ScanIcon />}
-              disabled
-              title={zhCN.topbar.scanPending}
+              leadingIcon={scanning ? <StopIcon /> : <ScanIcon />}
+              disabled={!scanning && !canStart}
+              title={!scanning && !canStart ? zhCN.scan.selectDrives : undefined}
+              onClick={() => void handleScanAction()}
             >
-              {zhCN.topbar.scan}
+              {scanning ? zhCN.scan.cancel : zhCN.scan.start}
             </Button>
             <button
               type="button"
@@ -116,6 +172,26 @@ export function AppShell(): React.JSX.Element {
             >
               {zhCN.elevation.restart}
             </Button>
+          </div>
+        ) : null}
+
+        {scanning || progress ? (
+          <div className={`scan-status${scanError ? ' scan-status--error' : ''}`}>
+            <div className="scan-status__meta">
+              <span className="scan-status__message">{scanStatusText(progress)}</span>
+              <span className="scan-status__counts">
+                {progress?.filesScanned ?? 0} {zhCN.scan.files} · {errorCount} {zhCN.scan.errors}
+              </span>
+            </div>
+            <ProgressBar
+              value={(progress?.percent ?? 0) * 100}
+              showValue
+              label={scanLabel}
+            />
+            {progress?.currentPath ? (
+              <span className="scan-status__path">{progress.currentPath}</span>
+            ) : null}
+            {scanError ? <span className="scan-status__error">{scanError}</span> : null}
           </div>
         ) : null}
 

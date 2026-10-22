@@ -31,6 +31,17 @@ export const zhCN = {
     switchToLight: '切换到浅色主题',
     switchToDark: '切换到深色主题'
   },
+  scan: {
+    start: '开始扫描',
+    starting: '正在启动扫描…',
+    cancel: '取消扫描',
+    selectDrives: '请先在设置中选择扫描盘符',
+    files: '文件',
+    errors: '错误',
+    done: '扫描完成',
+    cancelled: '扫描已取消',
+    failed: '扫描失败'
+  },
   settingsPage: {
     loading: '正在加载设置…',
     loadFailed: '设置加载失败',

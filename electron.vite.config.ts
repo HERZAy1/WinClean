@@ -6,7 +6,10 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        input: 'src/main/index.ts'
+        input: {
+          index: 'src/main/index.ts',
+          'scan-worker': 'src/main/scan/worker.ts'
+        }
       }
     }
   },

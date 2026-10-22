@@ -3,17 +3,12 @@ import path from 'node:path'
 import { closeDatabase, initDatabase } from './db'
 import { registerLlmIpc } from './ipc/llm'
 import { registerFallbackHandlers } from './ipc/registry'
+import { registerScanIpc } from './ipc/scan'
 import { registerSettingsIpc } from './ipc/settings'
 import { registerSystemIpc } from './ipc/system'
+import { ScanService } from './scan/service'
 import { electronSecretStore } from './settings/electron-secret-store'
 import { SettingsService } from './settings/service'
-
-function registerIpcHandlers(settingsService: SettingsService): void {
-  registerSettingsIpc(settingsService)
-  registerLlmIpc(settingsService)
-  registerSystemIpc()
-  registerFallbackHandlers()
-}
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -53,7 +48,12 @@ async function bootstrap(): Promise<void> {
 
   initDatabase()
   const settingsService = new SettingsService(app.getPath('userData'), electronSecretStore)
-  registerIpcHandlers(settingsService)
+  const scanService = new ScanService()
+  registerSettingsIpc(settingsService)
+  registerLlmIpc(settingsService)
+  registerSystemIpc()
+  registerScanIpc(scanService)
+  registerFallbackHandlers()
   createWindow()
 
   app.on('activate', () => {

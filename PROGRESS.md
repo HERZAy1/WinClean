@@ -7,7 +7,7 @@
 | T02 | 设置页与 API Key 加密存储 | T01 | ✅ 已验收 | 7d46695 |
 | T03 | LLM 适配层与连接测试 | T02 | ✅ 已验收 | d76eaa3 |
 | T04 | 管理员提权与磁盘枚举 | T00 | ✅ 已验收 | 7467ddc |
-| T05 | 文件扫描器与进度 | T04 | ⬜ | |
+| T05 | 文件扫描器与进度 | T04 | ✅ 已验收 | |
 | T06 | 系统/用户文件分类 | T05 | ⬜ | |
 | T07 | 注册表与已安装软件采集 | T04 | ⬜ | |
 | T08 | 规则式归属引擎 | T06, T07 | ⬜ | |
@@ -46,3 +46,8 @@
 - 状态：✅ 已验收
 - 遗留问题：本机当前为非管理员，未实际点击“以管理员重启”触发 UAC；提权重启代码已实现，T14 再验证安装包 `requireAdministrator`。
 - 给下一个任务的提示：通用 PowerShell 工具为 `src/main/win/powershell.ts` 的 `runPs`，后续扫描/注册表采集可复用。磁盘枚举已实测返回 C/D 两块 NTFS 盘，设置页盘符多选会写入 `scanDrives`。
+
+### 2026-10-23 · T05 文件扫描器与进度
+- 状态：✅ 已验收
+- 遗留问题：未完成真实 C 盘全量扫描（本机 C 盘已用约 131GB，手动冒烟在 49 个文件后取消）；峰值内存未记录。全量扫描建议在 T14 QA 阶段用虚拟机执行。
+- 给下一个任务的提示：扫描核心在 `src/main/scan/scanner.ts`，worker 为 `src/main/scan/worker.ts`，主线程写库/进度在 `src/main/scan/service.ts`。用 subst X: 临时盘完整跑通：3 个文件、4 个目录、root=15B、sub=12B、deep=7B、empty=0；取消后 worker 2 秒内退出。`ScanService.setOnComplete` 已预留，T06 可接分类阶段。

@@ -145,6 +145,20 @@ export function ScanIcon(props: IconProps): React.JSX.Element {
   )
 }
 
+export function StopIcon(props: IconProps): React.JSX.Element {
+  return (
+    <svg {...iconProps} {...props}>
+      <rect
+        x="6"
+        y="6"
+        width="12"
+        height="12"
+        rx="2"
+      />
+    </svg>
+  )
+}
+
 export function DiskIcon(props: IconProps): React.JSX.Element {
   return (
     <svg {...iconProps} {...props}>
