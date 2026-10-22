@@ -12,6 +12,7 @@ import {
   TreeIcon
 } from '../components/icons'
 import { zhCN } from '../i18n/zh-CN'
+import { useAnalysisStore } from '../stores/useAnalysis'
 import { useScanStore, scanStatusText } from '../stores/useScan'
 import { useSettingsStore } from '../stores/useSettings'
 import { useSystemStore } from '../stores/useSystem'
@@ -48,6 +49,8 @@ export function AppShell(): React.JSX.Element {
   const cancelScan = useScanStore((state) => state.cancel)
   const handleProgress = useScanStore((state) => state.handleProgress)
   const handleErrorCount = useScanStore((state) => state.handleErrorCount)
+  const handleAnalysisProgress = useAnalysisStore((state) => state.handleProgress)
+  const handleThinking = useAnalysisStore((state) => state.handleThinking)
   const meta = routeMeta[location.pathname] ?? routeMeta['/files']
   const isDark = resolvedTheme === 'dark'
   const themeLabel = isDark ? zhCN.topbar.switchToLight : zhCN.topbar.switchToDark
@@ -70,16 +73,24 @@ export function AppShell(): React.JSX.Element {
   }, [loadElevation, loadSettings, settings])
 
   useEffect(() => {
-    const unsubscribeProgress = window.api.on('event:progress', handleProgress)
+    const unsubscribeProgress = window.api.on('event:progress', (event) => {
+      if (event.stage === 'llm-analysis' || event.stage === 'breakdown') {
+        handleAnalysisProgress(event)
+      } else {
+        handleProgress(event)
+      }
+    })
     const unsubscribeErrors = window.api.on('event:scan-error-count', (payload) =>
       handleErrorCount(payload.count)
     )
+    const unsubscribeThinking = window.api.on('event:llm-thinking', handleThinking)
 
     return () => {
       unsubscribeProgress()
       unsubscribeErrors()
+      unsubscribeThinking()
     }
-  }, [handleErrorCount, handleProgress])
+  }, [handleAnalysisProgress, handleErrorCount, handleProgress, handleThinking])
 
   async function handleScanAction(): Promise<void> {
     if (scanning) {

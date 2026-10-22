@@ -17,7 +17,8 @@ export const CHANNELS = {
   },
   scan: {
     start: 'scan:start',
-    cancel: 'scan:cancel'
+    cancel: 'scan:cancel',
+    latest: 'scan:latest'
   },
   analysis: {
     start: 'analysis:start',
@@ -40,6 +41,9 @@ export const CHANNELS = {
     execute: 'clean:execute',
     log: 'clean:log'
   },
+  shell: {
+    showItemInFolder: 'shell:showItemInFolder'
+  },
   events: {
     progress: 'event:progress',
     llmThinking: 'event:llm-thinking',
@@ -60,6 +64,7 @@ export type CommandChannel =
   | (typeof CHANNELS.unowned)[keyof typeof CHANNELS.unowned]
   | (typeof CHANNELS.apps)[keyof typeof CHANNELS.apps]
   | (typeof CHANNELS.clean)[keyof typeof CHANNELS.clean]
+  | (typeof CHANNELS.shell)[keyof typeof CHANNELS.shell]
 
 export type IpcChannel = CommandChannel | EventChannel
 
@@ -73,7 +78,8 @@ export const COMMAND_CHANNELS = [
   ...Object.values(CHANNELS.tree),
   ...Object.values(CHANNELS.unowned),
   ...Object.values(CHANNELS.apps),
-  ...Object.values(CHANNELS.clean)
+  ...Object.values(CHANNELS.clean),
+  ...Object.values(CHANNELS.shell)
 ] as const satisfies readonly CommandChannel[]
 
 export const ALL_CHANNELS = [

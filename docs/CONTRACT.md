@@ -193,6 +193,7 @@ export interface LlmThinkingEvent {
 | `drives:list` | - | `DriveInfo[]` | |
 | `scan:start` | `{drives: string[]}` | `{scanId: number}` | 开始完整流水线（扫描→注册表→分类→规则归属） |
 | `scan:cancel` | - | `void` | |
+| `scan:latest` | - | `{scanId: number} \| null` | 最近一次扫描 |
 | `analysis:start` | `{scanId: number}` | `void` | 启动 LLM 补全与拆分；需 `privacyConsent` |
 | `analysis:cancel` | - | `void` | |
 | `tree:getRoots` | `{scanId}` | `AppTreeRoot[]` | 软件节点（含系统、未归属两个虚拟根） |
@@ -204,6 +205,7 @@ export interface LlmThinkingEvent {
 | `clean:preview` | `{scanId, appIds: string[], includeEssential?: boolean}` | `CleanPlan` | |
 | `clean:execute` | `{planId, selectedPaths: string[]}` | `CleanResult` | 路径必须是计划子集 |
 | `clean:log` | `{limit}` | `CleanLogEntry[]` | |
+| `shell:showItemInFolder` | `{path: string}` | `void` | 在资源管理器中显示 |
 
 事件（主进程 → 渲染进程，`window.api.on(channel, cb)`）：
 

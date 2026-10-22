@@ -1,10 +1,12 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { App } from './App'
+import '@xyflow/react/dist/style.css'
 import '../styles/tokens.css'
 import '../styles/base.css'
 import './components/ui/ui.css'
 import '../styles/shell.css'
+import '../styles/files.css'
 import { initializeTheme } from './stores/useTheme'
 import { zhCN } from './i18n/zh-CN'
 

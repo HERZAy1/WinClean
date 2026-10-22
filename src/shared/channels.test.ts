@@ -14,7 +14,7 @@ function readContractChannels(): string[] {
 
   const section = contract.slice(sectionStart, sectionEnd)
   const channelPattern =
-    /`((?:app|settings|llm|drives|scan|analysis|tree|unowned|apps|clean|event):[^`]+)`/g
+    /`((?:app|settings|llm|drives|scan|analysis|tree|unowned|apps|clean|shell|event):[^`]+)`/g
 
   return [...new Set([...section.matchAll(channelPattern)].map((match) => match[1]))].sort()
 }

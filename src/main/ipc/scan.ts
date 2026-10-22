@@ -2,6 +2,7 @@ import { CHANNELS } from '../../shared/channels'
 import { fail, ok } from './result'
 import { handle } from './registry'
 import type { ScanService } from '../scan/service'
+import { getDatabase } from '../db'
 import { listDrives } from '../win/drives'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -52,5 +53,12 @@ export function registerScanIpc(service: ScanService): void {
   handle(CHANNELS.scan.cancel, () => {
     service.cancel()
     return ok(undefined)
+  })
+
+  handle(CHANNELS.scan.latest, () => {
+    const row = getDatabase()
+      .prepare('SELECT id FROM scans ORDER BY id DESC LIMIT 1')
+      .get() as { id: number } | undefined
+    return ok(row ? { scanId: row.id } : null)
   })
 }

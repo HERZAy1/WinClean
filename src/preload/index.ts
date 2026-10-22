@@ -65,7 +65,8 @@ const api: WinCleanApi = {
   },
   scan: {
     start: (input) => invoke<{ scanId: number }>(CHANNELS.scan.start, input),
-    cancel: () => invoke<void>(CHANNELS.scan.cancel)
+    cancel: () => invoke<void>(CHANNELS.scan.cancel),
+    latest: () => invoke<{ scanId: number } | null>(CHANNELS.scan.latest)
   },
   analysis: {
     start: (input) => invoke<void>(CHANNELS.analysis.start, input),
@@ -87,6 +88,9 @@ const api: WinCleanApi = {
     preview: (input) => invoke<CleanPlan>(CHANNELS.clean.preview, input),
     execute: (input) => invoke<CleanResult>(CHANNELS.clean.execute, input),
     log: (input) => invoke<CleanLogEntry[]>(CHANNELS.clean.log, input)
+  },
+  shell: {
+    showItemInFolder: (input) => invoke<void>(CHANNELS.shell.showItemInFolder, input)
   },
   on: subscribe
 }

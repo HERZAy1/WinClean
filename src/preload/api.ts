@@ -47,6 +47,7 @@ export interface WinCleanApi {
   scan: {
     start(input: { drives: string[] }): Promise<Result<{ scanId: number }>>
     cancel(): Promise<Result<void>>
+    latest(): Promise<Result<{ scanId: number } | null>>
   }
   analysis: {
     start(input: { scanId: number }): Promise<Result<void>>
@@ -72,6 +73,9 @@ export interface WinCleanApi {
     }): Promise<Result<CleanPlan>>
     execute(input: { planId: string; selectedPaths: string[] }): Promise<Result<CleanResult>>
     log(input: { limit: number }): Promise<Result<CleanLogEntry[]>>
+  }
+  shell: {
+    showItemInFolder(input: { path: string }): Promise<Result<void>>
   }
   on<K extends keyof EventPayloadMap>(
     channel: K,

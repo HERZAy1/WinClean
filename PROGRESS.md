@@ -12,7 +12,7 @@
 | T07 | 注册表与已安装软件采集 | T04 | ✅ 已验收 | 69d22fa |
 | T08 | 规则式归属引擎 | T06, T07 | ✅ 已验收 | 2454499 |
 | T09 | LLM 归属补全与未归属分析 | T03, T08 | ✅ 已验收 | 48d199e |
-| T10 | 页面一：文件关系树 + 未归属面板 | T09 | ⬜ | |
+| T10 | 页面一：文件关系树 + 未归属面板 | T09 | ✅ 已验收 | |
 | T11 | 软件占用三段拆分 | T09 | ⬜ | |
 | T12 | 页面二：软件占用分析 | T11 | ⬜ | |
 | T13 | 一键清理与安全拦截 | T11, T12 | ⬜ | |
@@ -72,3 +72,9 @@
 - 状态：✅ 已验收
 - 遗留问题：未调用真实付费 API；使用 mock LLM 覆盖正常、缓存、非法 JSON 重试、429 重试、取消、payload 脱敏与写回。
 - 给下一个任务的提示：`AnalysisService.start(scanId)` 异步启动，`waitForIdle()` 用于测试；前置条件为 privacyConsent、已配置 Key/模型、最近一次连接测试成功。条目按目录聚合，批次 20、队列并发 2，缓存键为批次指纹；LLM 归属 confidence 乘 0.9 写入 `ownerships(source='llm')`，未归属写入 `unowned_explain`。`unowned:explain` 使用最近一次扫描。
+
+### 2026-10-23 · T10 文件关系树与未归属面板
+- 状态：✅ 已验收
+- 契约变更：新增 `scan:latest` 与 `shell:showItemInFolder` 通道；`docs/CONTRACT.md`、channels、preload 已同步。
+- 遗留问题：未保存浅色/深色截图，仅做 CDP 视觉/布局冒烟；未在 10 万节点真实 Electron 窗口中做交互帧率测量，后端基准为 roots 40ms、首次展开 12ms（内存库 100k）。
+- 给下一个任务的提示：关系树使用 `@xyflow/react` + `d3-hierarchy`，后端 `tree:getRoots/getChildren` 支持 App 分组、目录懒加载和 100 条 +N 分页；未归属列表用 `@tanstack/react-virtual`，`unowned:explain` 接入 AI。运行态冒烟：57 个根、React Flow 18 个可见节点、未归属 1 行。
