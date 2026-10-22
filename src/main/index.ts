@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { closeDatabase, initDatabase } from './db'
+import { registerAnalysisIpc } from './ipc/analysis'
 import { registerLlmIpc } from './ipc/llm'
 import { registerFallbackHandlers } from './ipc/registry'
 import { registerScanIpc } from './ipc/scan'
@@ -9,6 +10,7 @@ import { registerSystemIpc } from './ipc/system'
 import { registerTreeIpc } from './ipc/tree'
 import { applyClassification } from './classify/apply'
 import { buildRules } from './classify/rules'
+import { AnalysisService } from './analysis/service'
 import { applyRuleOwnership, formatOwnershipStats } from './ownership/apply'
 import { collectAndSaveRegistry } from './registry/service'
 import { ScanService } from './scan/service'
@@ -54,6 +56,7 @@ async function bootstrap(): Promise<void> {
   initDatabase()
   const settingsService = new SettingsService(app.getPath('userData'), electronSecretStore)
   const scanService = new ScanService()
+  const analysisService = new AnalysisService(settingsService)
   scanService.setOnComplete(async (scanId, drives) => {
     scanService.reportStage('collecting-registry', '正在采集已安装软件…')
     try {
@@ -77,6 +80,7 @@ async function bootstrap(): Promise<void> {
   registerSystemIpc()
   registerScanIpc(scanService)
   registerTreeIpc()
+  registerAnalysisIpc(analysisService)
   registerFallbackHandlers()
   createWindow()
 
