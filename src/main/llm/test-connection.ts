@@ -25,15 +25,22 @@ export async function testConnection(
     })
     const latencyMs = Date.now() - startedAt
 
+    service.recordUsage(provider, {
+      tokensIn: response.tokensIn,
+      tokensOut: response.tokensOut
+    })
     service.markConnectionTestSuccess(provider)
 
     return ok({
       provider,
       modelId: config.modelId,
       latencyMs,
-      replyPreview: response.text.slice(0, 80)
+      replyPreview: response.text.slice(0, 80),
+      tokensIn: response.tokensIn,
+      tokensOut: response.tokensOut
     })
   } catch (error) {
+    // detail 中携带上游原始错误码与信息，渲染层直接展示
     const llmError = toLlmError(error)
     return fail(llmError.code, llmError.message, llmError.detail)
   }

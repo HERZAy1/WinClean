@@ -25,7 +25,8 @@ function makeService(): SettingsService {
     activeProvider: 'openai',
     providers: {
       openai: { ...providers.openai, modelId: 'gpt-test' },
-      anthropic: { ...providers.anthropic, modelId: 'claude-test' }
+      anthropic: { ...providers.anthropic, modelId: 'claude-test' },
+      deepseek: providers.deepseek
     }
   })
   service.setApiKey('openai', 'sk-test-key')
@@ -64,6 +65,7 @@ describe('testConnection', () => {
       expect(result.data.provider).toBe('openai')
     }
     expect(service.hasSuccessfulConnectionTest('openai')).toBe(true)
+    expect(service.getSettings().llmUsage.openai.requests).toBe(1)
   })
 
   it('未配置 Key 时返回 LLM_NOT_CONFIGURED', async () => {
@@ -100,5 +102,40 @@ describe('testConnection', () => {
       expect(result.error.code).toBe('LLM_AUTH_FAILED')
       expect(JSON.stringify(result)).not.toContain('sk-test-key')
     }
+  })
+
+  it('503 透传上游错误码与提示，并归类为服务不可用', async () => {
+    server = await startTestServer((_req, res) => {
+      res.statusCode = 503
+      res.setHeader('Content-Type', 'application/json')
+      res.end(
+        JSON.stringify({
+          error: {
+            code: 'no_healthy_account',
+            gateway_hint: 'check /status or retry later',
+            message: 'all accounts are temporarily unavailable'
+          }
+        })
+      )
+    })
+    const service = makeService()
+    const providers = service.getSettings().providers
+    service.save({
+      providers: {
+        ...providers,
+        openai: { ...providers.openai, baseUrl: server.url }
+      }
+    })
+
+    const result = await testConnection(service, 'openai')
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.code).toBe('LLM_UNAVAILABLE')
+      expect(result.error.detail).toContain('HTTP 503')
+      expect(result.error.detail).toContain('no_healthy_account')
+      expect(result.error.detail).toContain('check /status or retry later')
+    }
+    expect(service.hasSuccessfulConnectionTest('openai')).toBe(false)
   })
 })

@@ -1,3 +1,4 @@
+import { LLM_PRESETS } from '../../shared/llm'
 import type { LlmProvider } from '../../shared/types'
 import type { SettingsService } from '../settings/service'
 import { AnthropicClient } from './anthropic'
@@ -18,6 +19,7 @@ export function createLlmClient(
 ): LlmClient {
   const settings = service.getSettings()
   const config = settings.providers[provider]
+  const preset = LLM_PRESETS[provider]
   const apiKey = service.getApiKey(provider)
 
   if (!apiKey || !config.modelId.trim()) {
@@ -25,7 +27,7 @@ export function createLlmClient(
   }
 
   const common = {
-    baseUrl: config.baseUrl,
+    baseUrl: preset.baseUrlLocked ? preset.baseUrl : config.baseUrl,
     apiKey,
     modelId: config.modelId.trim(),
     fetchImpl: options.fetchImpl,
@@ -33,5 +35,6 @@ export function createLlmClient(
     maxAttempts: options.maxAttempts
   }
 
-  return provider === 'openai' ? new OpenAiClient(common) : new AnthropicClient(common)
+  // DeepSeek 走 OpenAI 兼容协议，复用同一个客户端
+  return preset.protocol === 'openai' ? new OpenAiClient(common) : new AnthropicClient(common)
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { LlmProvider } from '../../../shared/types'
-import { ProviderCard } from '../components/settings/ProviderCard'
+import { ModelConfigCard } from '../components/settings/ModelConfigCard'
 import { Card, ProgressBar, Select, Switch } from '../components/ui'
 import { zhCN } from '../i18n/zh-CN'
 import { formatBytes } from '../lib/format'
@@ -17,6 +17,7 @@ export function SettingsPage(): React.JSX.Element {
   const setApiKey = useSettingsStore((state) => state.setApiKey)
   const clearApiKey = useSettingsStore((state) => state.clearApiKey)
   const testConnection = useSettingsStore((state) => state.testConnection)
+  const listModels = useSettingsStore((state) => state.listModels)
   const theme = useThemeStore((state) => state.theme)
   const setTheme = useThemeStore((state) => state.setTheme)
   const drives = useSystemStore((state) => state.drives)
@@ -33,24 +34,18 @@ export function SettingsPage(): React.JSX.Element {
   async function handleProviderSave(
     provider: LlmProvider,
     values: { baseUrl: string; modelId: string }
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (!settings) {
-      return
+      return false
     }
 
-    const providers =
-      provider === 'openai'
-        ? {
-            ...settings.providers,
-            openai: { ...settings.providers.openai, ...values }
-          }
-        : {
-            ...settings.providers,
-            anthropic: { ...settings.providers.anthropic, ...values }
-          }
-
-    const result = await save({ providers })
-    setNotice(result.ok ? zhCN.settingsPage.providerSaved : null)
+    const result = await save({
+      providers: {
+        ...settings.providers,
+        [provider]: { ...settings.providers[provider], ...values }
+      }
+    })
+    return result.ok
   }
 
   async function handleSetApiKey(provider: LlmProvider, apiKey: string): Promise<boolean> {
@@ -131,48 +126,15 @@ export function SettingsPage(): React.JSX.Element {
         </Card>
       ) : (
         <div className="settings-layout">
-          <Card heading={zhCN.settingsPage.activeProvider}>
-            <fieldset className="provider-choice">
-              <legend className="visually-hidden">{zhCN.settingsPage.activeProvider}</legend>
-              {(['openai', 'anthropic'] as const).map((provider) => (
-                <label
-                  key={provider}
-                  className="provider-choice__item"
-                >
-                  <input
-                    type="radio"
-                    name="active-provider"
-                    checked={settings.activeProvider === provider}
-                    onChange={() => void handleActiveProvider(provider)}
-                  />
-                  <span>
-                    {provider === 'openai'
-                      ? zhCN.settingsPage.openai
-                      : zhCN.settingsPage.anthropic}
-                  </span>
-                </label>
-              ))}
-            </fieldset>
-          </Card>
-
-          <div className="settings-provider-grid">
-            <ProviderCard
-              provider="openai"
-              config={settings.providers.openai}
-              onSaveConfig={(values) => handleProviderSave('openai', values)}
-              onSetApiKey={(apiKey) => handleSetApiKey('openai', apiKey)}
-              onClearApiKey={() => handleClearApiKey('openai')}
-              onTestConnection={() => testConnection('openai')}
-            />
-            <ProviderCard
-              provider="anthropic"
-              config={settings.providers.anthropic}
-              onSaveConfig={(values) => handleProviderSave('anthropic', values)}
-              onSetApiKey={(apiKey) => handleSetApiKey('anthropic', apiKey)}
-              onClearApiKey={() => handleClearApiKey('anthropic')}
-              onTestConnection={() => testConnection('anthropic')}
-            />
-          </div>
+          <ModelConfigCard
+            settings={settings}
+            onSelectProvider={(provider) => handleActiveProvider(provider)}
+            onSaveConfig={(provider, values) => handleProviderSave(provider, values)}
+            onSetApiKey={(provider, apiKey) => handleSetApiKey(provider, apiKey)}
+            onClearApiKey={(provider) => handleClearApiKey(provider)}
+            onTestConnection={(provider) => testConnection(provider)}
+            onListModels={(provider, baseUrl) => listModels(provider, baseUrl)}
+          />
 
           <Card heading={zhCN.settingsPage.privacyTitle}>
             <div className="settings-privacy">

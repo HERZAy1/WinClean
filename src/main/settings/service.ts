@@ -1,26 +1,36 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { AppSettings, LlmProvider, LlmProviderConfig, Result } from '../../shared/types'
+import { LLM_PRESETS, LLM_PROVIDERS, isLlmProvider } from '../../shared/llm'
+import type { AppSettings, LlmProvider, LlmProviderConfig, LlmUsage, Result } from '../../shared/types'
 import { fail, ok } from '../ipc/result'
 import type { SecretStore } from './secret-store'
+
+function emptyUsage(): LlmUsage {
+  return { tokensIn: 0, tokensOut: 0, requests: 0, updatedAt: 0 }
+}
+
+function defaultProvider(provider: LlmProvider): LlmProviderConfig {
+  return {
+    provider,
+    baseUrl: LLM_PRESETS[provider].baseUrl,
+    modelId: '',
+    hasApiKey: false
+  }
+}
 
 export const DEFAULT_SETTINGS: AppSettings = {
   activeProvider: 'openai',
   providers: {
-    openai: {
-      provider: 'openai',
-      baseUrl: 'https://api.openai.com/v1',
-      modelId: '',
-      hasApiKey: false
-    },
-    anthropic: {
-      provider: 'anthropic',
-      baseUrl: 'https://api.anthropic.com',
-      modelId: '',
-      hasApiKey: false
-    }
+    openai: defaultProvider('openai'),
+    anthropic: defaultProvider('anthropic'),
+    deepseek: defaultProvider('deepseek')
   },
-  privacyConsent: false,
+  llmUsage: {
+    openai: emptyUsage(),
+    anthropic: emptyUsage(),
+    deepseek: emptyUsage()
+  },
+  privacyConsent: true,
   theme: 'system',
   cleanMode: 'recycle',
   scanDrives: []
@@ -37,18 +47,34 @@ function stringValue(value: unknown, fallback: string): string {
   return typeof value === 'string' ? value : fallback
 }
 
+function numberValue(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0
+}
+
 function providerConfig(
   raw: unknown,
   provider: LlmProvider,
-  fallback: LlmProviderConfig,
   hasApiKey: boolean
 ): LlmProviderConfig {
   const value = isRecord(raw) ? raw : {}
+  const preset = LLM_PRESETS[provider]
+
   return {
     provider,
-    baseUrl: stringValue(value['baseUrl'], fallback.baseUrl),
-    modelId: stringValue(value['modelId'], fallback.modelId),
+    // DeepSeek 等固定接口地址的服务商忽略本地存储的 baseUrl，避免被改坏
+    baseUrl: preset.baseUrlLocked ? preset.baseUrl : stringValue(value['baseUrl'], preset.baseUrl),
+    modelId: stringValue(value['modelId'], ''),
     hasApiKey
+  }
+}
+
+function usageValue(raw: unknown): LlmUsage {
+  const value = isRecord(raw) ? raw : {}
+  return {
+    tokensIn: numberValue(value['tokensIn']),
+    tokensOut: numberValue(value['tokensOut']),
+    requests: numberValue(value['requests']),
+    updatedAt: numberValue(value['updatedAt'])
   }
 }
 
@@ -77,19 +103,16 @@ export class SettingsService {
 
   save(patch: SettingsPatch): Result<AppSettings> {
     const current = this.settings
+    const providers = { ...current.providers }
+    for (const provider of LLM_PROVIDERS) {
+      providers[provider] = { ...current.providers[provider], ...(patch.providers?.[provider] ?? {}) }
+    }
+
     const next = this.normalize({
       ...current,
       ...patch,
-      providers: {
-        openai: {
-          ...current.providers.openai,
-          ...(patch.providers?.openai ?? {})
-        },
-        anthropic: {
-          ...current.providers.anthropic,
-          ...(patch.providers?.anthropic ?? {})
-        }
-      }
+      providers,
+      llmUsage: patch.llmUsage ?? current.llmUsage
     })
 
     this.settings = this.withApiKeyFlags(next)
@@ -149,6 +172,23 @@ export class SettingsService {
     return Boolean(this.secrets[provider])
   }
 
+  // 累加一次真实调用的 Token 消耗，供设置页汇总展示
+  recordUsage(provider: LlmProvider, usage: { tokensIn?: number; tokensOut?: number }): void {
+    const current = this.settings.llmUsage[provider] ?? emptyUsage()
+    const next: LlmUsage = {
+      tokensIn: current.tokensIn + Math.max(0, usage.tokensIn ?? 0),
+      tokensOut: current.tokensOut + Math.max(0, usage.tokensOut ?? 0),
+      requests: current.requests + 1,
+      updatedAt: Date.now()
+    }
+
+    this.settings = {
+      ...this.settings,
+      llmUsage: { ...this.settings.llmUsage, [provider]: next }
+    }
+    this.writeSettings()
+  }
+
   markConnectionTestSuccess(provider: LlmProvider): void {
     this.successfulTests.add(provider)
   }
@@ -159,14 +199,14 @@ export class SettingsService {
 
   private normalize(raw: unknown): AppSettings {
     const value = isRecord(raw) ? raw : {}
-    const activeProvider =
-      value['activeProvider'] === 'anthropic' ? 'anthropic' : ('openai' as const)
+    const activeProvider = isLlmProvider(value['activeProvider']) ? value['activeProvider'] : 'openai'
     const theme =
       value['theme'] === 'light' || value['theme'] === 'dark' || value['theme'] === 'system'
         ? value['theme']
         : DEFAULT_SETTINGS.theme
     const cleanMode = value['cleanMode'] === 'permanent' ? 'permanent' : ('recycle' as const)
-    const providers = isRecord(value['providers']) ? value['providers'] : {}
+    const providersRaw = isRecord(value['providers']) ? value['providers'] : {}
+    const usageRaw = isRecord(value['llmUsage']) ? value['llmUsage'] : {}
     const scanDrives = Array.isArray(value['scanDrives'])
       ? value['scanDrives'].filter((drive): drive is string => typeof drive === 'string')
       : []
@@ -174,20 +214,17 @@ export class SettingsService {
     return {
       activeProvider,
       providers: {
-        openai: providerConfig(
-          providers['openai'],
-          'openai',
-          DEFAULT_SETTINGS.providers.openai,
-          this.hasApiKey('openai')
-        ),
-        anthropic: providerConfig(
-          providers['anthropic'],
-          'anthropic',
-          DEFAULT_SETTINGS.providers.anthropic,
-          this.hasApiKey('anthropic')
-        )
+        openai: providerConfig(providersRaw['openai'], 'openai', this.hasApiKey('openai')),
+        anthropic: providerConfig(providersRaw['anthropic'], 'anthropic', this.hasApiKey('anthropic')),
+        deepseek: providerConfig(providersRaw['deepseek'], 'deepseek', this.hasApiKey('deepseek'))
       },
-      privacyConsent: value['privacyConsent'] === true,
+      llmUsage: {
+        openai: usageValue(usageRaw['openai']),
+        anthropic: usageValue(usageRaw['anthropic']),
+        deepseek: usageValue(usageRaw['deepseek'])
+      },
+      // 隐私授权默认开启；用户显式关闭后仍保持关闭
+      privacyConsent: value['privacyConsent'] !== false,
       theme,
       cleanMode,
       scanDrives
@@ -195,13 +232,11 @@ export class SettingsService {
   }
 
   private withApiKeyFlags(settings: AppSettings): AppSettings {
-    return {
-      ...settings,
-      providers: {
-        openai: { ...settings.providers.openai, hasApiKey: this.hasApiKey('openai') },
-        anthropic: { ...settings.providers.anthropic, hasApiKey: this.hasApiKey('anthropic') }
-      }
+    const providers = { ...settings.providers }
+    for (const provider of LLM_PROVIDERS) {
+      providers[provider] = { ...settings.providers[provider], hasApiKey: this.hasApiKey(provider) }
     }
+    return { ...settings, providers }
   }
 
   private readSettings(): AppSettings {
@@ -216,7 +251,7 @@ export class SettingsService {
     }
 
     const secrets: SecretsFile = {}
-    for (const provider of ['openai', 'anthropic'] as const) {
+    for (const provider of LLM_PROVIDERS) {
       const cipherText = raw[provider]
       if (typeof cipherText === 'string' && cipherText.length > 0) {
         secrets[provider] = cipherText
@@ -227,7 +262,9 @@ export class SettingsService {
 
   private readJson(filePath: string): unknown {
     try {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown
+      // 兼容带 UTF-8 BOM 的文件（手工编辑或第三方工具写入）
+      const text = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '')
+      return JSON.parse(text) as unknown
     } catch {
       return null
     }

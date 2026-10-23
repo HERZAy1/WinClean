@@ -16,6 +16,7 @@ interface SettingsState {
   setApiKey: (provider: LlmProvider, apiKey: string) => Promise<Result<void>>
   clearApiKey: (provider: LlmProvider) => Promise<Result<void>>
   testConnection: (provider: LlmProvider) => Promise<Result<TestConnectionResult>>
+  listModels: (provider: LlmProvider, baseUrl?: string) => Promise<Result<string[]>>
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -73,5 +74,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       set({ error: result.error.message })
     }
     return result
+  },
+
+  listModels: async (provider, baseUrl) => {
+    return window.api.llm.listModels({ provider, baseUrl })
   }
 }))

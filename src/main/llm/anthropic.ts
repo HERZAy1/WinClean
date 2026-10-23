@@ -1,5 +1,6 @@
 import { LlmError } from './errors'
-import { fetchWithRetry, joinUrl, readSse } from './http'
+import { fetchWithRetry, joinUrl, readSse, requestJson } from './http'
+import { parseModelIds } from './model-ids'
 import type { LlmClient, LlmRequest, LlmResponse } from './types'
 
 interface AnthropicClientOptions {
@@ -29,9 +30,28 @@ function parseJson(text: string): Record<string, unknown> {
 
 export class AnthropicClient implements LlmClient {
   private readonly url: string
+  private readonly baseUrl: string
 
   constructor(private readonly options: AnthropicClientOptions) {
+    this.baseUrl = options.baseUrl
     this.url = joinUrl(options.baseUrl, 'v1/messages')
+  }
+
+  async listModels(): Promise<string[]> {
+    const data = await requestJson(
+      joinUrl(this.baseUrl, 'v1/models'),
+      {
+        method: 'GET',
+        headers: this.headers()
+      },
+      {
+        fetchImpl: this.options.fetchImpl,
+        retryBaseMs: this.options.retryBaseMs,
+        maxAttempts: this.options.maxAttempts
+      }
+    )
+
+    return parseModelIds(data)
   }
 
   async complete(request: LlmRequest): Promise<LlmResponse> {

@@ -90,7 +90,8 @@ function createSettings(): SettingsService {
     activeProvider: 'openai',
     providers: {
       openai: { ...providers.openai, modelId: 'gpt-test' },
-      anthropic: { ...providers.anthropic, modelId: 'claude-test' }
+      anthropic: { ...providers.anthropic, modelId: 'claude-test' },
+      deepseek: providers.deepseek
     }
   })
   settings.setApiKey('openai', 'sk-analysis-test')
@@ -115,6 +116,7 @@ function createFixture(options: {
       requests.push(request)
       return responseFor(request)
     },
+    listModels: async () => ['gpt-test', 'claude-test'],
     stream: async (request, onDelta) => {
       requests.push(request)
       callCount += 1

@@ -22,4 +22,6 @@ export type LlmDeltaHandler = (delta: string) => void
 export interface LlmClient {
   complete(request: LlmRequest): Promise<LlmResponse>
   stream(request: LlmRequest, onDelta: LlmDeltaHandler): Promise<LlmResponse>
+  // 向上游询问可用模型列表，供设置页下拉选择
+  listModels(): Promise<string[]>
 }

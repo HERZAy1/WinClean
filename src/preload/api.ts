@@ -40,6 +40,7 @@ export interface WinCleanApi {
   }
   llm: {
     testConnection(input: { provider: LlmProvider }): Promise<Result<TestConnectionResult>>
+    listModels(input: { provider: LlmProvider; baseUrl?: string }): Promise<Result<string[]>>
   }
   drives: {
     list(): Promise<Result<DriveInfo[]>>

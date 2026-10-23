@@ -9,6 +9,8 @@ export interface AppError {
     | 'LLM_NOT_CONFIGURED'
     | 'LLM_AUTH_FAILED'
     | 'LLM_RATE_LIMITED'
+    | 'LLM_UNAVAILABLE'
+    | 'LLM_REQUEST_REJECTED'
     | 'LLM_BAD_RESPONSE'
     | 'LLM_NETWORK'
     | 'CANCELLED'
@@ -127,18 +129,26 @@ export interface CleanResult {
   }[]
 }
 
-export type LlmProvider = 'openai' | 'anthropic'
+export type LlmProvider = 'openai' | 'anthropic' | 'deepseek'
 
 export interface LlmProviderConfig {
   provider: LlmProvider
-  baseUrl: string // 默认 https://api.openai.com/v1 或 https://api.anthropic.com
-  modelId: string // 用户自填
+  baseUrl: string // OpenAI: https://api.openai.com/v1；Claude: https://api.anthropic.com；DeepSeek 固定为官方地址
+  modelId: string // 通过 /models 拉取后选择，或手动填写
   hasApiKey: boolean // 渲染进程只能知道是否已配置
+}
+
+export interface LlmUsage {
+  tokensIn: number
+  tokensOut: number
+  requests: number
+  updatedAt: number
 }
 
 export interface AppSettings {
   activeProvider: LlmProvider
   providers: Record<LlmProvider, LlmProviderConfig>
+  llmUsage: Record<LlmProvider, LlmUsage>
   privacyConsent: boolean
   theme: 'light' | 'dark' | 'system'
   cleanMode: 'recycle' | 'permanent'
@@ -150,6 +160,8 @@ export interface TestConnectionResult {
   modelId: string
   latencyMs: number
   replyPreview: string // 模型对测试消息的回复前 80 字
+  tokensIn?: number
+  tokensOut?: number
 }
 
 export type Stage =

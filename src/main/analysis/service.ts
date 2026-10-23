@@ -325,6 +325,10 @@ export class AnalysisService {
     })
 
     const parsed = this.parseResponse(batch.kind, response.text)
+    this.settings.recordUsage(this.settings.getSettings().activeProvider, {
+      tokensIn: response.tokensIn,
+      tokensOut: response.tokensOut
+    })
     this.db
       .prepare('INSERT OR REPLACE INTO llm_cache (key, response, createdAt) VALUES (?, ?, ?)')
       .run(key, response.text, Date.now())

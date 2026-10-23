@@ -10,7 +10,8 @@ export const CHANNELS = {
     clearApiKey: 'settings:clearApiKey'
   },
   llm: {
-    testConnection: 'llm:testConnection'
+    testConnection: 'llm:testConnection',
+    listModels: 'llm:listModels'
   },
   drives: {
     list: 'drives:list'

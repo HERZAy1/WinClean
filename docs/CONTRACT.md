@@ -125,19 +125,27 @@ export interface CleanResult {
 ## 3. 设置与 LLM
 
 ```ts
-export type LlmProvider = 'openai' | 'anthropic';
+export type LlmProvider = 'openai' | 'anthropic' | 'deepseek';
 
 export interface LlmProviderConfig {
   provider: LlmProvider;
-  baseUrl: string;           // 默认 https://api.openai.com/v1 或 https://api.anthropic.com
-  modelId: string;           // 用户自填
+  baseUrl: string;           // OpenAI: https://api.openai.com/v1；Claude: https://api.anthropic.com；DeepSeek 固定 https://api.deepseek.com
+  modelId: string;           // 通过上游 /models 拉取后选择，或手动填写
   hasApiKey: boolean;        // 渲染进程只能知道是否已配置
+}
+
+export interface LlmUsage {
+  tokensIn: number;
+  tokensOut: number;
+  requests: number;
+  updatedAt: number;
 }
 
 export interface AppSettings {
   activeProvider: LlmProvider;
   providers: Record<LlmProvider, LlmProviderConfig>;
-  privacyConsent: boolean;
+  llmUsage: Record<LlmProvider, LlmUsage>;   // 累计 Token 用量，供设置页汇总
+  privacyConsent: boolean;                   // 默认 true
   theme: 'light' | 'dark' | 'system';
   cleanMode: 'recycle' | 'permanent';
   scanDrives: string[];      // ['C','D']
@@ -148,8 +156,12 @@ export interface TestConnectionResult {
   modelId: string;
   latencyMs: number;
   replyPreview: string;      // 模型对测试消息的回复前 80 字
+  tokensIn?: number;
+  tokensOut?: number;
 }
 ```
+
+上游错误透传：`AppError.detail` 中携带 `HTTP <status> · <上游 error.code> · <上游 error.message> · <gateway_hint>`，渲染层原样展示。
 
 ## 4. 进度事件
 
@@ -191,7 +203,8 @@ export interface LlmThinkingEvent {
 | `settings:save` | `Partial<AppSettings>` | `AppSettings` | |
 | `settings:setApiKey` | `{provider, apiKey}` | `void` | 主进程加密存储 |
 | `settings:clearApiKey` | `{provider}` | `void` | |
-| `llm:testConnection` | `{provider}` | `TestConnectionResult` | 用已保存配置发测试消息 |
+| `llm:testConnection` | `{provider}` | `TestConnectionResult` | 用已保存配置发测试消息；失败时 `detail` 透传上游错误 |
+| `llm:listModels` | `{provider, baseUrl?}` | `string[]` | 调用上游 `/models` 拉取模型列表 |
 | `drives:list` | - | `DriveInfo[]` | |
 | `scan:start` | `{drives: string[]}` | `{scanId: number}` | 开始完整流水线（扫描→注册表→分类→规则归属） |
 | `scan:cancel` | - | `void` | |

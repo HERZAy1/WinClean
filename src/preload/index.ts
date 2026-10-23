@@ -58,7 +58,8 @@ const api: WinCleanApi = {
   },
   llm: {
     testConnection: (input) =>
-      invoke<TestConnectionResult>(CHANNELS.llm.testConnection, input)
+      invoke<TestConnectionResult>(CHANNELS.llm.testConnection, input),
+    listModels: (input) => invoke<string[]>(CHANNELS.llm.listModels, input)
   },
   drives: {
     list: () => invoke<DriveInfo[]>(CHANNELS.drives.list)

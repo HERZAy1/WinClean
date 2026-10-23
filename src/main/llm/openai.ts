@@ -1,5 +1,6 @@
 import { LlmError } from './errors'
-import { fetchWithRetry, joinUrl, readSse } from './http'
+import { fetchWithRetry, joinUrl, readSse, requestJson } from './http'
+import { parseModelIds } from './model-ids'
 import type { LlmClient, LlmRequest, LlmResponse } from './types'
 
 interface OpenAiClientOptions {
@@ -29,9 +30,28 @@ function parseJson(text: string): Record<string, unknown> {
 
 export class OpenAiClient implements LlmClient {
   private readonly url: string
+  private readonly baseUrl: string
 
   constructor(private readonly options: OpenAiClientOptions) {
+    this.baseUrl = options.baseUrl
     this.url = joinUrl(options.baseUrl, 'chat/completions')
+  }
+
+  async listModels(): Promise<string[]> {
+    const data = await requestJson(
+      joinUrl(this.baseUrl, 'models'),
+      {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${this.options.apiKey}` }
+      },
+      {
+        fetchImpl: this.options.fetchImpl,
+        retryBaseMs: this.options.retryBaseMs,
+        maxAttempts: this.options.maxAttempts
+      }
+    )
+
+    return parseModelIds(data)
   }
 
   async complete(request: LlmRequest): Promise<LlmResponse> {

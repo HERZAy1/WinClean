@@ -1,3 +1,4 @@
+import { isLlmProvider } from '../../shared/llm'
 import type { AppSettings, LlmProvider } from '../../shared/types'
 import { CHANNELS } from '../../shared/channels'
 import { fail, ok } from './result'
@@ -9,7 +10,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isProvider(value: unknown): value is LlmProvider {
-  return value === 'openai' || value === 'anthropic'
+  return isLlmProvider(value)
 }
 
 export function registerSettingsIpc(service: SettingsService): void {
