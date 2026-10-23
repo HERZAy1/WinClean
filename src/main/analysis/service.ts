@@ -11,6 +11,7 @@ import { LlmQueue } from '../llm/queue'
 import type { LlmClient, LlmRequest } from '../llm/types'
 import { loadOwnershipApps } from '../ownership/apply'
 import { normalizeName } from '../ownership/engine'
+import { logError, logInfo } from '../logging'
 import type { SettingsService } from '../settings/service'
 import { buildAnalysisItem, buildAnalysisItems } from './items'
 import {
@@ -34,7 +35,10 @@ interface AnalysisOptions {
   onProgress?: (event: ProgressEvent) => void
 }
 
-const BATCH_SIZE = 20
+const BATCH_SIZE = 8
+// 推理模型的思考过程同样消耗 completion_tokens，额度太小会把正文挤没
+const MAX_TOKENS = 8000
+const MIN_SPLIT_ITEMS = 2
 
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = []
@@ -81,6 +85,10 @@ export class AnalysisService {
   private completedBatches = 0
   private failedBatches = 0
   private batchTotal = 0
+  private totalItems = 0
+  private completedItems = 0
+  private failedItems = 0
+  private lastError: string | null = null
 
   constructor(
     private readonly settings: SettingsService,
@@ -120,6 +128,10 @@ export class AnalysisService {
     this.completedBatches = 0
     this.failedBatches = 0
     this.batchTotal = batches.length
+    this.totalItems = batches.reduce((sum, batch) => sum + batch.items.length, 0)
+    this.completedItems = 0
+    this.failedItems = 0
+    this.lastError = null
     this.queue = new LlmQueue(2)
     this.runPromise = this.run(scanId, batches)
     return ok(undefined)
@@ -208,9 +220,15 @@ export class AnalysisService {
 
       const tasks = batches.map((batch, index) =>
         queue
-          .run((signal) => this.processBatch(client, batch, index + 1, batches.length, scanId, signal))
-          .catch(() => {
-            this.failedBatches += 1
+          .run((signal) =>
+            this.processBatch(client, batch, index + 1, batches.length, scanId, signal)
+          )
+          .catch((error: unknown) => {
+            if (error instanceof LlmError && error.code === 'CANCELLED') {
+              return
+            }
+            this.lastError = toLlmError(error).message
+            this.emitProgress(0, 0, this.completedBatches, this.batchTotal, 'AI 分析批次失败')
           })
       )
       await Promise.all(tasks)
@@ -219,59 +237,141 @@ export class AnalysisService {
         return
       }
       this.active = false
-      this.emitProgress(
-        0,
-        0,
-        this.completedBatches,
-        this.batchTotal,
+      const summary =
         this.failedBatches > 0
-          ? `AI 分析完成：${this.completedBatches}/${this.batchTotal}，失败 ${this.failedBatches} 批`
+          ? `AI 分析完成：成功 ${this.completedBatches}/${this.batchTotal}，失败 ${this.failedBatches} 批`
           : `AI 分析完成：${this.completedBatches}/${this.batchTotal}`
+      logInfo(
+        `AI 分析结束：批次 ${this.completedBatches}/${this.batchTotal}，失败 ${this.failedBatches}，条目 ${this.completedItems + this.failedItems}/${this.totalItems}`
       )
+      this.emitProgress(0, 0, this.completedBatches, this.batchTotal, summary)
     } catch (error) {
       if (!this.active) {
         return
       }
       this.active = false
       const llmError = toLlmError(error)
+      this.lastError = llmError.message
+      logError('AI 分析中断', llmError)
       this.emitProgress(0, 0, this.completedBatches, this.batchTotal, llmError.message, 'error')
     }
   }
 
+  // 返回 true 表示该批次（含拆分后的子批次）全部成功
   private async processBatch(
     client: LlmClient,
     batch: Batch,
     batchIndex: number,
     batchTotal: number,
     scanId: number,
-    signal: AbortSignal
-  ): Promise<void> {
+    signal: AbortSignal,
+    isRoot = true
+  ): Promise<boolean> {
+    const focus = batch.items[0]?.path ?? ''
+
     for (let attempt = 1; attempt <= 2; attempt += 1) {
+      const startedAt = Date.now()
       try {
         await this.processBatchOnce(client, batch, batchIndex, batchTotal, scanId, signal)
-        this.completedBatches += 1
-        this.emitProgress(0, 0, this.completedBatches, this.batchTotal, `AI 分析 ${this.completedBatches}/${this.batchTotal}`)
-        return
+        this.completedItems += batch.items.length
+        if (isRoot) {
+          this.completedBatches += 1
+        }
+        logInfo(
+          `AI 批次 ${batchIndex}/${batchTotal} 完成：${batch.items.length} 条，${Date.now() - startedAt}ms`
+        )
+        this.emitProgress(0, 0, this.completedBatches, this.batchTotal, `AI 分析 ${batchIndex}/${batchTotal}`)
+        return true
       } catch (error) {
         if (error instanceof LlmError && error.code === 'CANCELLED') {
           throw error
         }
+
+        this.recordFailedUsage(error)
+
+        // 输出被截断：拆半重试，避免整批丢弃
+        if (
+          error instanceof LlmError &&
+          error.code === 'LLM_TRUNCATED' &&
+          batch.items.length >= MIN_SPLIT_ITEMS
+        ) {
+          const middle = Math.ceil(batch.items.length / 2)
+          const halves: Batch[] = [
+            { kind: batch.kind, items: batch.items.slice(0, middle) },
+            { kind: batch.kind, items: batch.items.slice(middle) }
+          ]
+          logInfo(
+            `AI 批次 ${batchIndex}/${batchTotal} 输出被截断，拆分为 ${halves[0].items.length}+${halves[1].items.length} 条重试`
+          )
+          this.emitThinking({
+            batchIndex,
+            batchTotal,
+            status: 'retrying',
+            focus,
+            error: '输出被截断，拆分后重试'
+          })
+
+          let allOk = true
+          for (const half of halves) {
+            const ok = await this.processBatch(
+              client,
+              half,
+              batchIndex,
+              batchTotal,
+              scanId,
+              signal,
+              false
+            )
+            allOk = allOk && ok
+          }
+          if (isRoot) {
+            if (allOk) {
+              this.completedBatches += 1
+            } else {
+              this.failedBatches += 1
+            }
+          }
+          return allOk
+        }
+
+        const llmError = toLlmError(error)
         if (attempt === 2) {
+          this.failedItems += batch.items.length
+          if (isRoot) {
+            this.failedBatches += 1
+          }
+          this.lastError = describeError(llmError)
+          logError(
+            `AI 批次 ${batchIndex}/${batchTotal} 失败（${batch.items.length} 条）`,
+            llmError
+          )
           this.emitThinking({
             batchIndex,
             batchTotal,
             status: 'failed',
-            focus: batch.items[0]?.path ?? ''
+            focus,
+            error: this.lastError
           })
-          throw error
+          this.emitProgress(0, 0, this.completedBatches, this.batchTotal, 'AI 分析批次失败')
+          return false
         }
+
         this.emitThinking({
           batchIndex,
           batchTotal,
           status: 'retrying',
-          focus: batch.items[0]?.path ?? ''
+          focus,
+          error: describeError(llmError)
         })
       }
+    }
+
+    return false
+  }
+
+  private recordFailedUsage(error: unknown): void {
+    if (error instanceof LlmError && error.usage) {
+      this.settings.recordUsage(this.settings.getSettings().activeProvider, error.usage)
     }
   }
 
@@ -304,7 +404,7 @@ export class AnalysisService {
     const request: LlmRequest = {
       system: batch.kind === 'ownership' ? OWNERSHIP_SYSTEM_PROMPT : UNOWNED_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: buildMessages(batch.kind, batch.items) }],
-      maxTokens: 2000,
+      maxTokens: MAX_TOKENS,
       temperature: 0,
       signal
     }
@@ -453,13 +553,26 @@ export class AnalysisService {
     message: string,
     stage: ProgressEvent['stage'] = 'llm-analysis'
   ): void {
+    // 按“已处理条目”计算百分比：失败批次同样计入，结束时必定 100%
+    const processed = this.completedItems + this.failedItems
+    const percent =
+      this.totalItems > 0
+        ? Math.min(1, processed / this.totalItems)
+        : total > 0
+          ? Math.min(1, completed / total)
+          : 0
+
     const event: ProgressEvent = {
       stage,
       scannedBytes,
       totalUsedBytes,
-      percent: total > 0 ? Math.min(1, completed / total) : 0,
+      percent,
       filesScanned: 0,
-      message
+      message,
+      batchTotal: this.batchTotal,
+      completedBatches: this.completedBatches,
+      failedBatches: this.failedBatches,
+      lastError: this.lastError ?? undefined
     }
     if (this.options.onProgress) {
       this.options.onProgress(event)
@@ -467,4 +580,11 @@ export class AnalysisService {
       sendToRenderers(CHANNELS.events.progress, event)
     }
   }
+}
+
+function describeError(error: LlmError): string {
+  if (!error.detail) {
+    return error.message
+  }
+  return `${error.message}（${error.detail}）`
 }

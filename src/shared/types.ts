@@ -11,6 +11,7 @@ export interface AppError {
     | 'LLM_RATE_LIMITED'
     | 'LLM_UNAVAILABLE'
     | 'LLM_REQUEST_REJECTED'
+    | 'LLM_TRUNCATED'
     | 'LLM_BAD_RESPONSE'
     | 'LLM_NETWORK'
     | 'CANCELLED'
@@ -185,6 +186,11 @@ export interface ProgressEvent {
   currentPath?: string
   filesScanned: number
   message: string
+  // 仅 llm-analysis 阶段：批次统计，供 UI 展示进度与失败原因
+  batchTotal?: number
+  completedBatches?: number
+  failedBatches?: number
+  lastError?: string
 }
 
 // LLM 思考进度（独立于总进度）
@@ -196,6 +202,7 @@ export interface LlmThinkingEvent {
   streamedText?: string // 流式片段（用于“思考中”展示）
   tokensIn?: number
   tokensOut?: number
+  error?: string // status=failed 时的原因摘要
 }
 
 export interface AppTreeRoot {

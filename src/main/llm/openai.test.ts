@@ -149,4 +149,39 @@ describe('OpenAiClient', () => {
       expect((error as LlmError).message).not.toContain('sk-secret-openai')
     }
   })
+
+  it('finish_reason=length 时抛出 LLM_TRUNCATED 并携带已用 token', async () => {
+    server = await startTestServer((_req, res) => {
+      res.setHeader('Content-Type', 'application/json')
+      res.end(
+        JSON.stringify({
+          choices: [{ message: { content: '' }, finish_reason: 'length' }],
+          usage: { prompt_tokens: 7, completion_tokens: 2000 }
+        })
+      )
+    })
+
+    await expect(openAiClient(server.url).complete(request)).rejects.toMatchObject({
+      code: 'LLM_TRUNCATED',
+      usage: { tokensIn: 7, tokensOut: 2000 }
+    })
+  })
+
+  it('流式被截断时同样抛出 LLM_TRUNCATED', async () => {
+    server = await startTestServer((_req, res) => {
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.write(
+        `data: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: 'length' }] })}\n\n`
+      )
+      res.write(`data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 9, completion_tokens: 2000 } })}\n\n`)
+      res.end('data: [DONE]\n\n')
+    })
+
+    await expect(
+      openAiClient(server.url).stream(request, () => undefined)
+    ).rejects.toMatchObject({
+      code: 'LLM_TRUNCATED',
+      usage: { tokensIn: 9, tokensOut: 2000 }
+    })
+  })
 })

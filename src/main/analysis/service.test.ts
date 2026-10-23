@@ -28,7 +28,7 @@ interface Fixture {
   unownedPath: string
 }
 
-function createDb(includeUnowned = true): Database.Database {
+function createDb(includeUnowned = true, extraAmbiguous = 0): Database.Database {
   const db = new Database(':memory:')
   db.exec(`
     CREATE TABLE scans (id INTEGER PRIMARY KEY, startedAt INTEGER, drives TEXT, totalUsedBytes INTEGER);
@@ -77,6 +77,14 @@ function createDb(includeUnowned = true): Database.Database {
     "INSERT INTO ownerships (scanId, targetType, targetId, appId, confidence, source, reason) VALUES (1, 'path', ?, NULL, 0.8, 'rule', '归属歧义：Acme / Other')"
   ).run(ambiguousPath)
 
+  for (let index = 0; index < extraAmbiguous; index += 1) {
+    const extraPath = `C:\\Users\\${username}\\AppData\\Local\\AcmeExtra${index}`
+    insertFile.run(extraPath, `C:\\Users\\${username}\\AppData\\Local`, `AcmeExtra${index}`, 1, 100, 'unknown')
+    db.prepare(
+      "INSERT INTO ownerships (scanId, targetType, targetId, appId, confidence, source, reason) VALUES (1, 'path', ?, NULL, 0.7, 'rule', '归属歧义：Acme')"
+    ).run(extraPath)
+  }
+
   return db
 }
 
@@ -103,8 +111,10 @@ function createFixture(options: {
   includeUnowned?: boolean
   firstResponse?: 'invalid' | '429' | null
   holdStream?: boolean
+  extraAmbiguous?: number
+  truncateAbove?: number
 } = {}): Fixture {
-  const db = createDb(options.includeUnowned ?? true)
+  const db = createDb(options.includeUnowned ?? true, options.extraAmbiguous ?? 0)
   const settings = createSettings()
   const requests: LlmRequest[] = []
   const thinking: unknown[] = []
@@ -120,6 +130,15 @@ function createFixture(options: {
     stream: async (request, onDelta) => {
       requests.push(request)
       callCount += 1
+      if (options.truncateAbove != null) {
+        const payload = JSON.parse(request.messages[0].content) as { items: unknown[] }
+        if (payload.items.length > options.truncateAbove) {
+          throw new LlmError('LLM_TRUNCATED', {
+            detail: 'finish_reason=length',
+            usage: { tokensIn: 100, tokensOut: 50 }
+          })
+        }
+      }
       if (options.firstResponse === 'invalid' && callCount === 1) {
         onDelta('not-json')
         return { text: 'not-json' }
@@ -288,6 +307,29 @@ describe('AnalysisService', () => {
         .prepare('SELECT appId FROM ownerships WHERE targetId = ?')
         .get(fixture.ambiguousPath)
     ).toEqual({ appId: 'acme' })
+  })
+
+  it('输出被截断时自动拆分批次并全部完成', async () => {
+    // 8 条归属条目 + 截断阈值 4 → 首批 8 条会被截断，拆成 4+4 后成功
+    const fixture = createFixture({ includeUnowned: false, extraAmbiguous: 7, truncateAbove: 4 })
+    await fixture.service.start(1)
+    await fixture.service.waitForIdle()
+
+    const llmRows = fixture.db
+      .prepare("SELECT COUNT(*) n FROM ownerships WHERE source = 'llm'")
+      .get() as { n: number }
+    expect(llmRows.n).toBe(8)
+
+    const last = fixture.progress.at(-1) as {
+      percent: number
+      failedBatches?: number
+      completedBatches?: number
+      batchTotal?: number
+    }
+    expect(last.percent).toBe(1)
+    expect(last.failedBatches).toBe(0)
+    expect(last.completedBatches).toBe(last.batchTotal)
+    expect(fixture.requests.length).toBeGreaterThan(1)
   })
 
   it('取消会中止在途流式请求', async () => {

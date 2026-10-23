@@ -12,9 +12,10 @@ export interface AppError {
   code:
     | 'NOT_ELEVATED' | 'PERMISSION_DENIED' | 'PATH_BLOCKED' | 'NOT_FOUND'
     | 'LLM_NOT_CONFIGURED' | 'LLM_AUTH_FAILED' | 'LLM_RATE_LIMITED'
+    | 'LLM_UNAVAILABLE' | 'LLM_REQUEST_REJECTED' | 'LLM_TRUNCATED'
     | 'LLM_BAD_RESPONSE' | 'LLM_NETWORK' | 'CANCELLED' | 'INTERNAL';
   message: string;      // 面向用户的中文信息
-  detail?: string;      // 技术细节（可选）
+  detail?: string;      // 技术细节（可选）：HTTP 状态码 + 上游 error.code/message/gateway_hint
 }
 ```
 
@@ -169,6 +170,7 @@ export interface TestConnectionResult {
 export type Stage = 'idle' | 'scanning' | 'collecting-registry' | 'classifying' | 'rule-matching' | 'llm-analysis' | 'breakdown' | 'done' | 'cancelled' | 'error';
 
 // 总进度条：percent = scannedBytes / totalUsedBytes（扫描阶段）。必须单调不减，上限 1。
+// llm-analysis 阶段：percent = (已完成条目 + 失败条目) / 总条目，结束时必定为 1。
 export interface ProgressEvent {
   stage: Stage;
   scannedBytes: number;
@@ -177,6 +179,10 @@ export interface ProgressEvent {
   currentPath?: string;
   filesScanned: number;
   message: string;
+  batchTotal?: number;       // 仅 llm-analysis：总批次数
+  completedBatches?: number; // 成功批次数
+  failedBatches?: number;    // 失败批次数
+  lastError?: string;        // 最近一次失败原因（含上游 detail）
 }
 
 // LLM 思考进度（独立于总进度）
@@ -188,6 +194,7 @@ export interface LlmThinkingEvent {
   streamedText?: string;     // 流式片段（用于“思考中”展示）
   tokensIn?: number;
   tokensOut?: number;
+  error?: string;            // status=failed 或 retrying 时的原因摘要
 }
 ```
 

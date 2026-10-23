@@ -86,12 +86,22 @@ export class AnthropicClient implements LlmClient {
     }
 
     const usage = isRecord(data['usage']) ? data['usage'] : null
+    const tokensIn =
+      usage && typeof usage['input_tokens'] === 'number' ? usage['input_tokens'] : undefined
+    const tokensOut =
+      usage && typeof usage['output_tokens'] === 'number' ? usage['output_tokens'] : undefined
+
+    if (data['stop_reason'] === 'max_tokens') {
+      throw new LlmError('LLM_TRUNCATED', {
+        detail: `stop_reason=max_tokens，output_tokens=${tokensOut ?? '未知'}`,
+        usage: { tokensIn, tokensOut }
+      })
+    }
+
     return {
       text,
-      tokensIn:
-        usage && typeof usage['input_tokens'] === 'number' ? usage['input_tokens'] : undefined,
-      tokensOut:
-        usage && typeof usage['output_tokens'] === 'number' ? usage['output_tokens'] : undefined
+      tokensIn,
+      tokensOut
     }
   }
 
@@ -118,6 +128,7 @@ export class AnthropicClient implements LlmClient {
     let text = ''
     let tokensIn: number | undefined
     let tokensOut: number | undefined
+    let stopReason: string | null = null
 
     await readSse(response.body, (data) => {
       const event = parseJson(data)
@@ -142,6 +153,10 @@ export class AnthropicClient implements LlmClient {
       }
 
       if (type === 'message_delta') {
+        const delta = isRecord(event['delta']) ? event['delta'] : null
+        if (delta && typeof delta['stop_reason'] === 'string') {
+          stopReason = delta['stop_reason']
+        }
         const usage = isRecord(event['usage']) ? event['usage'] : null
         if (usage && typeof usage['output_tokens'] === 'number') {
           tokensOut = usage['output_tokens']
@@ -153,6 +168,20 @@ export class AnthropicClient implements LlmClient {
         throw new LlmError('LLM_BAD_RESPONSE')
       }
     })
+
+    if (stopReason === 'max_tokens') {
+      throw new LlmError('LLM_TRUNCATED', {
+        detail: `stop_reason=max_tokens，output_tokens=${tokensOut ?? '未知'}`,
+        usage: { tokensIn, tokensOut }
+      })
+    }
+
+    if (!text.trim()) {
+      throw new LlmError('LLM_BAD_RESPONSE', {
+        detail: '模型返回空内容',
+        usage: { tokensIn, tokensOut }
+      })
+    }
 
     return { text, tokensIn, tokensOut }
   }

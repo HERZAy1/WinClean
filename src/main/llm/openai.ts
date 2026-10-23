@@ -78,20 +78,27 @@ export class OpenAiClient implements LlmClient {
     const first = Array.isArray(choices) && isRecord(choices[0]) ? choices[0] : null
     const message = first && isRecord(first['message']) ? first['message'] : null
     const text = message && typeof message['content'] === 'string' ? message['content'] : null
-
-    if (text === null) {
-      throw new LlmError('LLM_BAD_RESPONSE')
-    }
+    const finishReason =
+      first && typeof first['finish_reason'] === 'string' ? first['finish_reason'] : null
 
     const usage = isRecord(data['usage']) ? data['usage'] : null
-    return {
-      text,
-      tokensIn: usage && typeof usage['prompt_tokens'] === 'number' ? usage['prompt_tokens'] : undefined,
-      tokensOut:
-        usage && typeof usage['completion_tokens'] === 'number'
-          ? usage['completion_tokens']
-          : undefined
+    const tokensIn =
+      usage && typeof usage['prompt_tokens'] === 'number' ? usage['prompt_tokens'] : undefined
+    const tokensOut =
+      usage && typeof usage['completion_tokens'] === 'number' ? usage['completion_tokens'] : undefined
+
+    if (finishReason === 'length') {
+      throw new LlmError('LLM_TRUNCATED', {
+        detail: `finish_reason=length，completion_tokens=${tokensOut ?? '未知'}`,
+        usage: { tokensIn, tokensOut }
+      })
     }
+
+    if (text === null) {
+      throw new LlmError('LLM_BAD_RESPONSE', { usage: { tokensIn, tokensOut } })
+    }
+
+    return { text, tokensIn, tokensOut }
   }
 
   async stream(request: LlmRequest, onDelta: (delta: string) => void): Promise<LlmResponse> {
@@ -120,11 +127,15 @@ export class OpenAiClient implements LlmClient {
     let text = ''
     let tokensIn: number | undefined
     let tokensOut: number | undefined
+    let finishReason: string | null = null
 
     await readSse(response.body, (data) => {
       const event = parseJson(data)
       const choices = event['choices']
       const first = Array.isArray(choices) && isRecord(choices[0]) ? choices[0] : null
+      if (first && typeof first['finish_reason'] === 'string' && first['finish_reason']) {
+        finishReason = first['finish_reason']
+      }
       const delta = first && isRecord(first['delta']) ? first['delta'] : null
       if (delta && typeof delta['content'] === 'string') {
         text += delta['content']
@@ -141,6 +152,21 @@ export class OpenAiClient implements LlmClient {
         }
       }
     })
+
+    // 推理模型的思考过程会消耗 completion_tokens；被 max_tokens 截断时正文可能为空
+    if (finishReason === 'length') {
+      throw new LlmError('LLM_TRUNCATED', {
+        detail: `finish_reason=length，completion_tokens=${tokensOut ?? '未知'}`,
+        usage: { tokensIn, tokensOut }
+      })
+    }
+
+    if (!text.trim()) {
+      throw new LlmError('LLM_BAD_RESPONSE', {
+        detail: '模型返回空内容',
+        usage: { tokensIn, tokensOut }
+      })
+    }
 
     return { text, tokensIn, tokensOut }
   }

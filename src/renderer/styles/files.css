@@ -82,6 +82,18 @@
   white-space: pre-wrap;
 }
 
+.analysis-panel__error {
+  padding: 8px 10px;
+  margin: 0;
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius);
+  font-size: 12px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
 .analysis-panel__actions {
   display: flex;
   justify-content: flex-end;

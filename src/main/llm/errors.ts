@@ -10,6 +10,7 @@ const USER_MESSAGES: Record<AppError['code'], string> = {
   LLM_RATE_LIMITED: '模型请求过于频繁，请稍后再试',
   LLM_UNAVAILABLE: '模型服务暂时不可用，请稍后重试或更换模型',
   LLM_REQUEST_REJECTED: '模型服务拒绝了请求，请检查模型 ID 与请求参数',
+  LLM_TRUNCATED: '模型输出被截断（达到 max_tokens 上限）',
   LLM_BAD_RESPONSE: '模型返回格式无法解析',
   LLM_NETWORK: '无法连接模型服务，请检查网络或 Base URL',
   CANCELLED: '操作已取消',
@@ -30,6 +31,8 @@ export class LlmError extends Error {
   readonly retryAfterMs?: number
   readonly status?: number
   readonly upstream?: UpstreamErrorInfo
+  // 失败前已经消耗的 token，便于失败批次也计入用量
+  readonly usage?: { tokensIn?: number; tokensOut?: number }
 
   constructor(
     code: AppError['code'],
@@ -38,6 +41,7 @@ export class LlmError extends Error {
       retryAfterMs?: number
       status?: number
       upstream?: UpstreamErrorInfo
+      usage?: { tokensIn?: number; tokensOut?: number }
     } = {}
   ) {
     super(USER_MESSAGES[code])
@@ -47,6 +51,7 @@ export class LlmError extends Error {
     this.retryAfterMs = options.retryAfterMs
     this.status = options.status
     this.upstream = options.upstream
+    this.usage = options.usage
   }
 }
 
