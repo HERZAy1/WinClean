@@ -109,7 +109,7 @@ export class AnalysisService {
 
     const items = buildAnalysisItems(scanId, this.db)
     if (items.length === 0) {
-      this.emitProgress(0, 0, 0, 1, '没有需要 AI 分析的条目')
+      this.emitProgress(0, 0, 0, 1, '没有需要 AI 分析的条目', 'llm-analysis', true)
       return ok(undefined)
     }
 
@@ -147,7 +147,7 @@ export class AnalysisService {
     }
     this.active = false
     this.queue?.cancelAll()
-    this.emitProgress(0, 0, this.batchTotal, 0, 'AI 分析已取消', 'cancelled')
+    this.emitProgress(0, 0, this.batchTotal, 0, 'AI 分析已取消', 'cancelled', true)
   }
 
   async explain(paths: string[]): Promise<Result<UnownedExplain[]>> {
@@ -244,7 +244,7 @@ export class AnalysisService {
       logInfo(
         `AI 分析结束：批次 ${this.completedBatches}/${this.batchTotal}，失败 ${this.failedBatches}，条目 ${this.completedItems + this.failedItems}/${this.totalItems}`
       )
-      this.emitProgress(0, 0, this.completedBatches, this.batchTotal, summary)
+      this.emitProgress(0, 0, this.completedBatches, this.batchTotal, summary, 'llm-analysis', true)
     } catch (error) {
       if (!this.active) {
         return
@@ -253,7 +253,7 @@ export class AnalysisService {
       const llmError = toLlmError(error)
       this.lastError = llmError.message
       logError('AI 分析中断', llmError)
-      this.emitProgress(0, 0, this.completedBatches, this.batchTotal, llmError.message, 'error')
+      this.emitProgress(0, 0, this.completedBatches, this.batchTotal, llmError.message, 'error', true)
     }
   }
 
@@ -551,7 +551,8 @@ export class AnalysisService {
     completed: number,
     total: number,
     message: string,
-    stage: ProgressEvent['stage'] = 'llm-analysis'
+    stage: ProgressEvent['stage'] = 'llm-analysis',
+    finished = false
   ): void {
     // 按“已处理条目”计算百分比：失败批次同样计入，结束时必定 100%
     const processed = this.completedItems + this.failedItems
@@ -572,7 +573,9 @@ export class AnalysisService {
       batchTotal: this.batchTotal,
       completedBatches: this.completedBatches,
       failedBatches: this.failedBatches,
-      lastError: this.lastError ?? undefined
+      lastError: this.lastError ?? undefined,
+      source: 'analysis',
+      finished
     }
     if (this.options.onProgress) {
       this.options.onProgress(event)

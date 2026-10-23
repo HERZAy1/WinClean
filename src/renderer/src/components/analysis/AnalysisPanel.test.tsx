@@ -56,4 +56,22 @@ describe('AnalysisPanel', () => {
     expect(screen.getByText('Tokens：7711/5462')).toBeInTheDocument()
     expect(screen.getByText('100%')).toBeInTheDocument()
   })
+
+  it('收到扫描/拆分进度后仍显示“尚未开始”，不会出现 100%', () => {
+    useAnalysisStore.getState().handleProgress({
+      stage: 'breakdown',
+      scannedBytes: 0,
+      totalUsedBytes: 0,
+      percent: 1,
+      filesScanned: 0,
+      message: '正在拆分软件占用…',
+      source: 'scan'
+    })
+
+    render(<AnalysisPanel />)
+
+    expect(screen.getAllByText('尚未开始').length).toBeGreaterThan(0)
+    expect(screen.queryByText('100%')).not.toBeInTheDocument()
+    expect(screen.queryByText('AI 分析中…')).not.toBeInTheDocument()
+  })
 })

@@ -12,3 +12,4 @@ files/
 *.log
 .DS_Store
 .tmp/
+dist-build/

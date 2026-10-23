@@ -183,6 +183,8 @@ export interface ProgressEvent {
   completedBatches?: number; // 成功批次数
   failedBatches?: number;    // 失败批次数
   lastError?: string;        // 最近一次失败原因（含上游 detail）
+  source?: 'scan' | 'analysis'; // 事件来源，渲染层据此路由
+  finished?: boolean;        // 该阶段是否已结束（完成/取消/失败）
 }
 
 // LLM 思考进度（独立于总进度）

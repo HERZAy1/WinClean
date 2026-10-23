@@ -79,4 +79,37 @@ describe('useAnalysisStore', () => {
     expect(state.tokensIn).toBe(13)
     expect(state.tokensOut).toBe(7)
   })
+
+  it('扫描/拆分阶段的进度不会把面板变成“分析中 100%”', () => {
+    useAnalysisStore.getState().handleProgress({
+      stage: 'breakdown',
+      scannedBytes: 0,
+      totalUsedBytes: 0,
+      percent: 1,
+      filesScanned: 0,
+      message: '正在拆分软件占用…',
+      source: 'scan'
+    })
+
+    const state = useAnalysisStore.getState()
+    expect(state.status).toBe('idle')
+    expect(state.progress).toBeNull()
+    expect(state.active).toBe(false)
+  })
+
+  it('带 finished 标记的结束事件无需依赖文案即可收尾', () => {
+    useAnalysisStore.getState().handleProgress(
+      progress({
+        message: 'AI 分析结束',
+        finished: true,
+        percent: 1,
+        completedBatches: 40,
+        failedBatches: 0,
+        batchTotal: 40
+      })
+    )
+
+    expect(useAnalysisStore.getState().status).toBe('done')
+    expect(useAnalysisStore.getState().active).toBe(false)
+  })
 })

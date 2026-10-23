@@ -74,7 +74,9 @@ export function AppShell(): React.JSX.Element {
 
   useEffect(() => {
     const unsubscribeProgress = window.api.on('event:progress', (event) => {
-      if (event.stage === 'llm-analysis' || event.stage === 'breakdown') {
+      // 按事件来源路由：只有 AI 分析事件进入分析面板，其余（扫描/分类/拆分）进入总进度
+      const isAnalysis = event.source === 'analysis'
+      if (isAnalysis) {
         handleAnalysisProgress(event)
       } else {
         handleProgress(event)

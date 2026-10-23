@@ -259,7 +259,7 @@ export class ScanService {
   }
 
   private sendProgress(event: ProgressEvent): void {
-    sendToRenderers(CHANNELS.events.progress, event)
+    sendToRenderers(CHANNELS.events.progress, { ...event, source: 'scan' })
   }
 
   private sendErrorCount(): void {

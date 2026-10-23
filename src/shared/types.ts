@@ -191,6 +191,10 @@ export interface ProgressEvent {
   completedBatches?: number
   failedBatches?: number
   lastError?: string
+  // 事件来源：扫描流水线 or AI 分析，渲染层据此路由，避免串台
+  source?: 'scan' | 'analysis'
+  // 该阶段是否已结束（分析完成/取消/失败），用于状态机判定
+  finished?: boolean
 }
 
 // LLM 思考进度（独立于总进度）

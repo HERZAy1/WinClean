@@ -66,10 +66,16 @@ export const useAnalysisStore = create<AnalysisState>((set) => ({
   },
 
   handleProgress: (event) => {
+    // 只接受 AI 分析自己的进度事件，扫描/拆分阶段的进度不得污染分析状态
+    if (event.source != null && event.source !== 'analysis') {
+      return
+    }
+
     const finished =
-      event.stage === 'cancelled' ||
-      event.stage === 'error' ||
-      (event.stage === 'llm-analysis' && event.message.includes('完成'))
+      event.finished ??
+      (event.stage === 'cancelled' ||
+        event.stage === 'error' ||
+        (event.stage === 'llm-analysis' && event.message.includes('完成')))
 
     let status: AnalysisStatus = 'running'
     if (event.stage === 'cancelled') {

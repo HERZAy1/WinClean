@@ -325,10 +325,14 @@ describe('AnalysisService', () => {
       failedBatches?: number
       completedBatches?: number
       batchTotal?: number
+      source?: string
+      finished?: boolean
     }
     expect(last.percent).toBe(1)
     expect(last.failedBatches).toBe(0)
     expect(last.completedBatches).toBe(last.batchTotal)
+    expect(last.source).toBe('analysis')
+    expect(last.finished).toBe(true)
     expect(fixture.requests.length).toBeGreaterThan(1)
   })
 
