@@ -16,6 +16,7 @@ files:
 asarUnpack:
   - node_modules/better-sqlite3/**
   - out/main/scan-worker.js
+  - out/main/pipeline-worker.js
   - out/main/chunks/**
 
 npmRebuild: false

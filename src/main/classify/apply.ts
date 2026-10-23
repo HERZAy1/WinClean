@@ -1,10 +1,10 @@
-import { getDatabase } from '../db'
+import type Database from 'better-sqlite3'
 import { sortRules, type ClassificationRule } from './rules'
 
 export function applyClassification(
   scanId: number,
   rules: ClassificationRule[],
-  db = getDatabase()
+  db: Database.Database
 ): number {
   const sorted = sortRules(rules)
   const reset = db.prepare(

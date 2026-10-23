@@ -123,15 +123,20 @@ const SCHEMA_SQL = `
 
 let connection: Database.Database | null = null
 
+// 供 worker 线程等外部执行者直接打开同一个库文件
+export function databasePath(): string {
+  return path.join(app.getPath('userData'), 'app.db')
+}
+
 export function initDatabase(): Database.Database {
   if (connection) {
     return connection
   }
 
-  const databasePath = path.join(app.getPath('userData'), 'app.db')
-  fs.mkdirSync(path.dirname(databasePath), { recursive: true })
+  const dbFile = databasePath()
+  fs.mkdirSync(path.dirname(dbFile), { recursive: true })
 
-  const database = new Database(databasePath)
+  const database = new Database(dbFile)
   database.pragma('journal_mode = WAL')
   database.pragma('foreign_keys = ON')
   database.pragma('busy_timeout = 5000')

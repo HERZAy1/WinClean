@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
-import { closeDatabase, initDatabase } from './db'
+import { closeDatabase, databasePath, initDatabase } from './db'
 import { registerAnalysisIpc } from './ipc/analysis'
 import { registerAppsIpc } from './ipc/apps'
 import { registerCleanIpc } from './ipc/clean'
@@ -10,12 +10,9 @@ import { registerScanIpc } from './ipc/scan'
 import { registerSettingsIpc } from './ipc/settings'
 import { registerSystemIpc } from './ipc/system'
 import { registerTreeIpc } from './ipc/tree'
-import { applyClassification } from './classify/apply'
-import { buildRules } from './classify/rules'
 import { AnalysisService } from './analysis/service'
-import { buildBreakdowns } from './breakdown/service'
 import { CleanService } from './clean/service'
-import { applyRuleOwnership, formatOwnershipStats } from './ownership/apply'
+import { runPipelineInWorker } from './pipeline/service'
 import { collectAndSaveRegistry } from './registry/service'
 import { ScanService } from './scan/service'
 import { initLogger, logError, logInfo } from './logging'
@@ -85,15 +82,21 @@ async function bootstrap(): Promise<void> {
       )
     }
 
-    scanService.reportStage('classifying', '正在分类系统与用户文件…')
-    applyClassification(scanId, buildRules(drives))
-
-    scanService.reportStage('rule-matching', '正在匹配软件归属…')
-    const stats = applyRuleOwnership(scanId)
-    scanService.reportStage('rule-matching', formatOwnershipStats(stats))
-
-    scanService.reportStage('breakdown', '正在拆分软件占用…')
-    buildBreakdowns(scanId)
+    // 分类 / 归属 / 拆分放到 worker 线程，主进程保持响应
+    try {
+      await runPipelineInWorker({
+        dbPath: databasePath(),
+        scanId,
+        drives,
+        onStage: (stage, message) => scanService.reportStage(stage, message)
+      })
+    } catch (error) {
+      logError('扫描后处理失败', error)
+      scanService.reportStage(
+        'error',
+        `扫描后处理失败：${error instanceof Error ? error.message : String(error)}`
+      )
+    }
   })
   registerSettingsIpc(settingsService)
   registerLlmIpc(settingsService)

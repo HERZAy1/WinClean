@@ -1,19 +1,7 @@
 import type { CleanItem, SizeBreakdown, SizeCategory } from '../../shared/types'
 import { getDatabase } from '../db'
-import { isPathCleanable } from '../safety/guard'
-import { classifyBreakdownPath } from './rules'
 
-interface AppRow {
-  id: string
-  name: string
-  installLocation: string | null
-}
-
-interface FileRow {
-  path: string
-  sizeBytes: number
-  appId: string
-}
+export { buildBreakdowns } from './build'
 
 interface ItemRow {
   appId: string
@@ -23,72 +11,6 @@ interface ItemRow {
   riskLevel: CleanItem['riskLevel']
   reason: string
   source: CleanItem['source']
-}
-
-function appContext(app: AppRow) {
-  return {
-    appName: app.name,
-    installLocation: app.installLocation ?? undefined,
-    localAppData: process.env['LOCALAPPDATA'],
-    appData: process.env['APPDATA'],
-    programData: process.env['PROGRAMDATA'],
-    temp: process.env['TEMP']
-  }
-}
-
-export function buildBreakdowns(scanId: number, db = getDatabase()): number {
-  const apps = db.prepare('SELECT id, name, installLocation FROM apps WHERE hidden = 0').all() as AppRow[]
-  const appById = new Map(apps.map((app) => [app.id, app]))
-  const files = db
-    .prepare(
-      `SELECT path, sizeBytes, appId FROM files
-       WHERE scanId = ? AND appId IS NOT NULL AND owner != 'system' AND isDir = 0`
-    )
-    .all(scanId) as FileRow[]
-
-  const insert = db.prepare(`
-    INSERT INTO size_items (scanId, appId, path, sizeBytes, category, riskLevel, reason, source)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'rule')
-  `)
-
-  const count = db.transaction(() => {
-    db.prepare('DELETE FROM size_items WHERE scanId = ?').run(scanId)
-    let inserted = 0
-    for (const file of files) {
-      const app = appById.get(file.appId)
-      if (!app) {
-        continue
-      }
-      let classification = classifyBreakdownPath(file.path, {
-        installLocation: app.installLocation ?? undefined
-      })
-      if (classification.category === 'disposableCache') {
-        const cleanable = isPathCleanable(file.path, appContext(app))
-        if (!cleanable.ok) {
-          classification = {
-            category: 'essentialCache',
-            riskLevel: 'high',
-            reason: `${classification.reason}（安全校验降级：${cleanable.reason}）`,
-            ruleId: `${classification.ruleId}-downgraded`
-          }
-        }
-      }
-
-      insert.run(
-        scanId,
-        file.appId,
-        file.path,
-        file.sizeBytes,
-        classification.category,
-        classification.riskLevel,
-        classification.reason
-      )
-      inserted += 1
-    }
-    return inserted
-  })()
-
-  return count
 }
 
 function itemsFor(scanId: number, appId: string, db = getDatabase()): CleanItem[] {

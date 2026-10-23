@@ -8,7 +8,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: 'src/main/index.ts',
-          'scan-worker': 'src/main/scan/worker.ts'
+          'scan-worker': 'src/main/scan/worker.ts',
+          'pipeline-worker': 'src/main/pipeline/worker.ts'
         }
       }
     }
