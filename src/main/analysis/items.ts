@@ -27,29 +27,16 @@ function isUnderPath(candidate: string, parent: string): boolean {
 }
 
 function extensionDistribution(scanId: number, directory: string, db = getDatabase()): Record<string, number> {
+  // 走 (scanId, path) 索引的范围扫描，避免每个条目都全表 substr 匹配
+  const prefix = directory.replace(/\\+$/, '')
   const rows = db
     .prepare(
       `SELECT name FROM files
        WHERE scanId = ? AND isDir = 0
-         AND (
-           path = ? COLLATE NOCASE
-           OR (
-             length(path) > ?
-             AND substr(path, 1, ?) = ? COLLATE NOCASE
-             AND substr(path, ? + 1, 1) = ?
-           )
-         )
+         AND (path = ? OR (path > ? AND path < ?))
        LIMIT 1000`
     )
-    .all(
-      scanId,
-      directory,
-      directory.length,
-      directory.length,
-      directory,
-      directory.length,
-      '\\'
-    ) as { name: string }[]
+    .all(scanId, prefix, `${prefix}\\`, `${prefix}\\\uFFFF`) as { name: string }[]
 
   const distribution: Record<string, number> = {}
   for (const row of rows) {

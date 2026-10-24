@@ -62,19 +62,9 @@ function cacheKey(batch: Batch): string {
   return createHash('sha256').update(`${batch.kind}:${JSON.stringify(payload)}`).digest('hex')
 }
 
-function prefixPredicate(): string {
-  return `(
-    path = ? COLLATE NOCASE
-    OR (
-      length(path) > ?
-      AND substr(path, 1, ?) = ? COLLATE NOCASE
-      AND substr(path, ? + 1, 1) = ?
-    )
-  )`
-}
-
-function prefixParams(prefix: string): [string, number, number, string, number, string] {
-  return [prefix, prefix.length, prefix.length, prefix, prefix.length, '\\']
+// 把控制权交还事件循环：主进程与窗口消息队列共用线程，长时间同步写库会让窗口“未响应”
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve))
 }
 
 export class AnalysisService {
@@ -391,7 +381,7 @@ export class AnalysisService {
 
     if (cached) {
       const parsed = this.parseResponse(batch.kind, cached.response)
-      this.applyResults(scanId, batch, parsed)
+      await this.applyResults(scanId, batch, parsed)
       this.emitThinking({ batchIndex, batchTotal, status: 'done', focus })
       return
     }
@@ -432,7 +422,7 @@ export class AnalysisService {
     this.db
       .prepare('INSERT OR REPLACE INTO llm_cache (key, response, createdAt) VALUES (?, ?, ?)')
       .run(key, response.text, Date.now())
-    this.applyResults(scanId, batch, parsed)
+    await this.applyResults(scanId, batch, parsed)
     this.emitThinking({
       batchIndex,
       batchTotal,
@@ -457,24 +447,24 @@ export class AnalysisService {
     }
   }
 
-  private applyResults(
+  private async applyResults(
     scanId: number,
     batch: Batch,
     results: OwnershipAnalysisResult[] | UnownedAnalysisResult[]
-  ): void {
+  ): Promise<void> {
     const itemByPath = new Map(batch.items.map((item) => [item.path, item]))
     if (batch.kind === 'ownership') {
-      this.applyOwnership(scanId, results as OwnershipAnalysisResult[], itemByPath)
+      await this.applyOwnership(scanId, results as OwnershipAnalysisResult[], itemByPath)
     } else {
-      this.applyUnowned(scanId, results as UnownedAnalysisResult[], itemByPath)
+      await this.applyUnowned(scanId, results as UnownedAnalysisResult[], itemByPath)
     }
   }
 
-  private applyOwnership(
+  private async applyOwnership(
     scanId: number,
     results: OwnershipAnalysisResult[],
     itemByPath: Map<string, AnalysisItem>
-  ): void {
+  ): Promise<void> {
     const apps = loadOwnershipApps(this.db)
     const appByKey = new Map<string, { id: string; name: string }>()
     for (const app of apps) {
@@ -483,9 +473,11 @@ export class AnalysisService {
         appByKey.set(normalizeName(app.publisher), { id: app.id, name: app.name })
       }
     }
+    // 走 (scanId, path) 索引的范围更新，替代逐条全表扫描的 substr 前缀匹配
     const updateFiles = this.db.prepare(
       `UPDATE files SET appId = ?
-       WHERE scanId = ? AND owner != 'system' AND appId IS NULL AND ${prefixPredicate()}`
+       WHERE scanId = ? AND owner != 'system' AND appId IS NULL
+         AND (path = ? OR (path > ? AND path < ?))`
     )
     const insertOwnership = this.db.prepare(`
       INSERT OR REPLACE INTO ownerships
@@ -501,7 +493,8 @@ export class AnalysisService {
       const app = result.appName ? appByKey.get(normalizeName(result.appName)) : undefined
       const confidence = Math.min(1, Math.max(0, result.confidence)) * 0.9
       if (app) {
-        updateFiles.run(app.id, scanId, ...prefixParams(item.sourcePath))
+        const prefix = item.sourcePath.replace(/\\+$/, '')
+        updateFiles.run(app.id, scanId, prefix, `${prefix}\\`, `${prefix}\\\uFFFF`)
       }
       insertOwnership.run(
         scanId,
@@ -510,14 +503,16 @@ export class AnalysisService {
         confidence,
         result.reason
       )
+      // 让出事件循环，避免连续写库把窗口消息队列饿死（表现为“未响应”）
+      await yieldToEventLoop()
     }
   }
 
-  private applyUnowned(
+  private async applyUnowned(
     scanId: number,
     results: UnownedAnalysisResult[],
     itemByPath: Map<string, AnalysisItem>
-  ): void {
+  ): Promise<void> {
     const insert = this.db.prepare(
       'INSERT OR REPLACE INTO unowned_explain (path, scanId, json) VALUES (?, ?, ?)'
     )
@@ -534,6 +529,7 @@ export class AnalysisService {
         source: 'llm'
       }
       insert.run(item.sourcePath, scanId, JSON.stringify(explain))
+      await yieldToEventLoop()
     }
   }
 
