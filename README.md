@@ -4,6 +4,7 @@
 
 **Windows 磁盘空间管家** —— 不只告诉你「哪个文件夹最大」，而是告诉你「这些文件属于哪个软件、哪些能删」。
 
+[![CI](https://github.com/HERZAy1/WinClean/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/HERZAy1/WinClean/actions/workflows/ci.yml)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4?logo=windows11&logoColor=white)
 ![Version](https://img.shields.io/badge/version-0.1.0-2ea043)
 ![Electron](https://img.shields.io/badge/Electron-45-47848F?logo=electron&logoColor=white)
@@ -234,6 +235,7 @@ npm run typecheck
 | [docs/CONTRACT.md](docs/CONTRACT.md) | 数据模型、IPC 契约、SQLite 表结构 |
 | [docs/SAFETY.md](docs/SAFETY.md) | 删除与隐私红线（实现必须遵守） |
 | [docs/QA.md](docs/QA.md) | 验收清单与性能基线 |
+| [SECURITY.md](SECURITY.md) | 漏洞报告流程与威胁模型 |
 
 ## 已知限制
 
