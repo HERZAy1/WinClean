@@ -10,8 +10,9 @@
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-325%20passing-2ea043)
+![License](https://img.shields.io/badge/license-MIT-2ea043)
 
-[下载](#下载安装) · [功能](#功能) · [架构](#架构) · [性能](#性能) · [隐私与安全](#隐私与安全) · [文档](#文档)
+[下载](#下载安装) · [界面](#界面) · [功能](#功能) · [架构](#架构) · [性能](#性能) · [隐私与安全](#隐私与安全) · [文档](#文档)
 
 </div>
 
@@ -56,6 +57,22 @@ WinClean 换了个方向：
 命中多个规则时取置信度最高者；置信度接近时标记为歧义并交由 AI 或人工确认。
 
 </details>
+
+## 界面
+
+> 以下截图来自一次 665,135 个文件的 C 盘扫描。
+
+**文件关系树** —— 目录、文件与软件的归属关系，按大小排序；未归属项使用虚拟列表承载
+
+<img src="docs/images/screenshot-files.png" alt="文件关系树" width="100%">
+
+**软件占用** —— 每个软件的本体 / 必要缓存 / 非必要缓存构成，可按可清理量筛选
+
+<img src="docs/images/screenshot-apps.png" alt="软件占用" width="100%">
+
+**设置** —— 模型配置、Token 用量、隐私授权与清理策略集中在一页
+
+<img src="docs/images/screenshot-settings.png" alt="设置" width="100%">
 
 ## 架构
 
@@ -227,6 +244,10 @@ npm run typecheck && npm run lint && npm test
 ```
 
 涉及删除逻辑的改动，请先读 [docs/SAFETY.md](docs/SAFETY.md)，红线不可协商。
+
+## 许可
+
+[MIT](LICENSE) © 2026 WinClean
 
 ---
 
