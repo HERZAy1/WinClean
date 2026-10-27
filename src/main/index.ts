@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron'
+import fs from 'node:fs'
 import path from 'node:path'
 import { closeDatabase, databasePath, initDatabase } from './db'
 import { registerAnalysisIpc } from './ipc/analysis'
@@ -18,6 +19,28 @@ import { ScanService } from './scan/service'
 import { initLogger, logError, logInfo } from './logging'
 import { electronSecretStore } from './settings/electron-secret-store'
 import { SettingsService } from './settings/service'
+
+// 判断当前进程是否以管理员身份运行（SAM 文件仅管理员可读）
+function isRunningAsAdmin(): boolean {
+  try {
+    fs.accessSync('C:\\Windows\\System32\\config\\SAM', fs.constants.R_OK)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const runningAsAdmin = isRunningAsAdmin()
+
+// 发行包清单强制 requireAdministrator（electron-builder.yml），提升进程下 Chromium 沙箱
+// 无法创建 GPU / 渲染子进程，实测报 "GPU process launch failed: error_code=18" 后
+// 直接 FATAL 退出（异常码 0x80000003）。应用只加载本地打包内容，远程请求都在主进程
+// 发起，因此发行版始终关闭沙箱；开发态仅在管理员运行时关闭。
+if (app.isPackaged || runningAsAdmin) {
+  app.commandLine.appendSwitch('no-sandbox')
+  app.commandLine.appendSwitch('disable-gpu-sandbox')
+  app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
+}
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -64,7 +87,11 @@ async function bootstrap(): Promise<void> {
 
   await app.whenReady()
   initLogger(path.join(app.getPath('userData'), 'logs'))
-  logInfo('应用启动')
+  logInfo(
+    app.isPackaged || runningAsAdmin
+      ? '应用启动（已关闭 Chromium 沙箱：提升进程下沙箱无法创建子进程）'
+      : '应用启动（普通权限，沙箱开启）'
+  )
 
   initDatabase()
   const settingsService = new SettingsService(app.getPath('userData'), electronSecretStore)
@@ -127,7 +154,22 @@ app.on('before-quit', () => {
   closeDatabase()
 })
 
-void bootstrap().catch((error: unknown) => {
-  logError('应用启动失败', error)
+// 单实例：两个实例共用 %APPDATA%\winclean，会互相争抢 GPU 缓存与 LevelDB 锁
+if (!app.requestSingleInstanceLock()) {
   app.quit()
-})
+} else {
+  app.on('second-instance', () => {
+    const existing = BrowserWindow.getAllWindows()[0]
+    if (existing) {
+      if (existing.isMinimized()) {
+        existing.restore()
+      }
+      existing.focus()
+    }
+  })
+
+  void bootstrap().catch((error: unknown) => {
+    logError('应用启动失败', error)
+    app.quit()
+  })
+}
