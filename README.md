@@ -61,23 +61,26 @@ WinClean 换了个方向：
 
 ```mermaid
 flowchart LR
-  subgraph 主进程
-    A["扫描 worker<br/>worker_threads"] -->|批量写入| B[("SQLite · WAL<br/>scans / files / apps")]
-    B --> P["流水线 worker<br/>分类 → 归属 → 拆分"]
-    P --> B
+  subgraph M["主进程"]
+    A["扫描 worker<br/>worker_threads"]
+    B[("SQLite WAL<br/>scans / files / apps")]
+    P["流水线 worker<br/>分类 → 归属 → 拆分"]
     I["IPC 层<br/>统一 Result 契约"]
     L["LLM 客户端<br/>OpenAI / Anthropic / DeepSeek"]
   end
 
-  subgraph 渲染进程
+  subgraph V["渲染进程"]
     R["React 18 + zustand<br/>文件树 / 软件列表 / 设置"]
   end
 
-  P -->|stage · progress| I
-  I <--> R
-  R -->|请求补全| I
+  A -->|"批量写入"| B
+  B --> P
+  P --> B
+  P -->|"stage / progress"| I
+  R -->|"请求补全"| I
+  I -->|"进度事件"| R
   I --> L
-  L -->|JSON Schema 校验| B
+  L -->|"JSON Schema 校验"| B
 ```
 
 **关键约束**

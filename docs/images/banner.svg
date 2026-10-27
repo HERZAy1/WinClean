@@ -39,7 +39,7 @@
   <circle cx="1035" cy="170" r="8" fill="#60a5fa"/>
 
   <g font-family="'Segoe UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif">
-    <text x="96" y="104" font-size="13" letter-spacing="3.5" fill="#64748b">WINDOWS DESKTOP · OPEN SOURCE</text>
+    <text x="96" y="104" font-size="13" letter-spacing="3.5" fill="#64748b">WINDOWS DESKTOP · LOCAL FIRST</text>
     <text x="94" y="184" fill="#f8fafc" font-size="72" font-weight="700" letter-spacing="-1.5">WinClean</text>
     <text x="98" y="222" fill="#94a3b8" font-size="21" letter-spacing="1">磁盘管家 · Windows Disk Space Manager</text>
     <rect x="96" y="252" width="64" height="3" rx="1.5" fill="url(#accent)"/>
